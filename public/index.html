@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Request Inspector</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{font-family:system-ui,Arial,sans-serif;margin:24px;max-width:900px}
+textarea{width:100%;height:220px}
+pre{background:#111;color:#eee;padding:12px;overflow:auto}
+button{padding:10px 14px}
+.notice{color:#c90}
+</style>
+</head>
+<body>
+<h2>PowerShell Request Inspector</h2>
+<p>Paste “Copy as PowerShell”. Backend parses it, secrets are redacted.</p>
+<textarea id="ps" placeholder="Paste here"></textarea>
+<br><br>
+<button id="btn">Parse</button>
+<pre id="out"></pre>
+<p id="note" class="notice"></p>
+<script>
+async function go(){
+  const ps = document.getElementById("ps").value;
+  const r = await fetch("/convert",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({powershell:ps})});
+  const data = await r.json();
+  document.getElementById("out").textContent = JSON.stringify(data,null,2);
+  document.getElementById("note").textContent = data.notice || "";
+}
+document.getElementById("btn").onclick = go;
+</script>
+</body>
+</html>
