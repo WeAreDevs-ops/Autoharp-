@@ -3,8 +3,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Roblox Powerful tool</title>
+<title>Roblox Powerful Tool - Advanced Roblox Utilities</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 * {
   margin: 0;
@@ -12,265 +15,1094 @@
   box-sizing: border-box;
 }
 
+:root {
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --dark-gradient: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 50%, #0f0f23 100%);
+  --surface-dark: rgba(20, 20, 30, 0.95);
+  --surface-light: rgba(30, 30, 45, 0.9);
+  --surface-card: rgba(25, 25, 40, 0.8);
+  --accent-blue: #4A90E2;
+  --accent-purple: #7B68EE;
+  --accent-cyan: #00f2fe;
+  --text-primary: #FFFFFF;
+  --text-secondary: #B8BCC8;
+  --text-muted: #6B7280;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 35px 60px -15px rgba(0, 0, 0, 0.7);
+  --glow-blue: 0 0 30px rgba(74, 144, 226, 0.3);
+  --glow-purple: 0 0 30px rgba(123, 104, 238, 0.3);
+}
+
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
-  color: #e0e0e0;
-  min-height: 100vh;
-  padding: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--dark-gradient);
+  color: var(--text-primary);
+  line-height: 1.7;
+  font-weight: 400;
+  overflow-x: hidden;
 }
 
-.container {
-  max-width: 1000px;
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(0, 242, 254, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Navigation */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(12, 12, 12, 0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-color);
+  z-index: 1000;
+  padding: 1rem 0;
+}
+
+.nav-container {
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 40px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 2rem;
 }
 
-.header {
+.logo {
+  font-size: 1.5rem;
+  font-weight: 800;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.nav-links {
+  display: flex;
+  gap: 2rem;
+  list-style: none;
+}
+
+.nav-links a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.nav-links a:hover {
+  color: var(--accent-blue);
+}
+
+/* Hero Section */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  margin-bottom: 40px;
-  border-bottom: 2px solid #333;
-  padding-bottom: 30px;
+  padding: 8rem 2rem 4rem;
+  position: relative;
 }
 
-.header h1 {
-  font-size: 2.5rem;
-  font-weight: 300;
-  color: #ffffff;
-  margin-bottom: 10px;
-  letter-spacing: 2px;
+.hero-content {
+  max-width: 800px;
+  z-index: 2;
 }
 
-.header p {
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
+  border-radius: 50px;
+  padding: 0.5rem 1.5rem;
+  margin-bottom: 2rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  backdrop-filter: blur(10px);
+}
+
+.hero h1 {
+  font-size: clamp(3rem, 8vw, 6rem);
+  font-weight: 900;
+  line-height: 1.1;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(135deg, #FFFFFF 0%, #B8BCC8 50%, var(--accent-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.03em;
+}
+
+.hero p {
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
+  color: var(--text-secondary);
+  margin-bottom: 3rem;
+  line-height: 1.6;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cta-buttons {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  margin-bottom: 4rem;
+  flex-wrap: wrap;
+}
+
+.btn-primary {
+  background: var(--primary-gradient);
+  color: white;
+  padding: 1rem 2.5rem;
+  border-radius: 50px;
+  text-decoration: none;
+  font-weight: 600;
   font-size: 1.1rem;
-  color: #888;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-xl), var(--glow-blue);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-primary);
+  padding: 1rem 2.5rem;
+  border-radius: 50px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1.1rem;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+}
+
+.btn-secondary:hover {
+  background: var(--surface-light);
+  border-color: var(--accent-blue);
+  transform: translateY(-2px);
+}
+
+/* Stats Section */
+.stats {
+  padding: 4rem 2rem;
+  background: var(--surface-dark);
+  backdrop-filter: blur(20px);
+}
+
+.stats-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 3rem;
+  text-align: center;
+}
+
+.stat {
+  padding: 2rem;
+}
+
+.stat-number {
+  font-size: 3rem;
+  font-weight: 800;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+/* Features Section */
+.features {
+  padding: 6rem 2rem;
+}
+
+.features-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.features h2 {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.features-subtitle {
+  font-size: 1.3rem;
+  color: var(--text-secondary);
+  margin-bottom: 4rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-top: 4rem;
+}
+
+.feature-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 2.5rem 2rem;
+  text-align: left;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(20px);
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+}
+
+.feature-card:hover {
+  transform: translateY(-10px);
+  border-color: var(--accent-blue);
+  box-shadow: var(--shadow-xl), var(--glow-blue);
+}
+
+.feature-icon {
+  width: 60px;
+  height: 60px;
+  background: var(--primary-gradient);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--glow-blue);
+}
+
+.feature-card h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.feature-card p {
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
-.main-content {
-  background: rgba(25, 25, 25, 0.8);
-  border-radius: 12px;
-  padding: 40px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-  border: 1px solid #333;
+/* Services Section */
+.services {
+  padding: 6rem 2rem;
+  background: var(--surface-dark);
+}
+
+.services-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.services h2 {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.services-subtitle {
+  font-size: 1.3rem;
+  color: var(--text-secondary);
+  margin-bottom: 4rem;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 2rem;
+}
+
+.service-card {
+  background: var(--surface-light);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 2.5rem;
+  text-align: left;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(20px);
+  position: relative;
+  overflow: hidden;
+}
+
+.service-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(74, 144, 226, 0.05) 0%, rgba(123, 104, 238, 0.05) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.service-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--accent-purple);
+  box-shadow: var(--shadow-xl), var(--glow-purple);
+}
+
+.service-card:hover::before {
+  opacity: 1;
+}
+
+.service-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  z-index: 1;
+  position: relative;
+}
+
+.service-emoji {
+  font-size: 2rem;
+}
+
+.service-card h3 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.service-card p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  z-index: 1;
+  position: relative;
+}
+
+.service-btn {
+  background: var(--accent-gradient);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 1;
+  position: relative;
+  display: inline-block;
+}
+
+.service-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px rgba(0, 242, 254, 0.3);
+}
+
+/* Tool Section */
+.tool-section {
+  padding: 6rem 2rem;
+  background: var(--surface-card);
+}
+
+/* Video Section */
+.video-section {
+  background: var(--surface-dark);
+  border-radius: 20px;
+  padding: 2.5rem;
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(20px);
+  position: relative;
+  overflow: hidden;
+  margin-top: 2rem;
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.video-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+}
+
+.video-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 1.5rem;
+  text-align: center;
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-blue) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.video-container {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+
+.video-container iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+}
+
+.tool-container {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.tool-section h2 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  margin-bottom: 2rem;
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-blue) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .input-section {
-  margin-bottom: 30px;
+  background: var(--surface-dark);
+  border-radius: 20px;
+  padding: 2.5rem;
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(20px);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+.input-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
 }
 
 .input-label {
   display: block;
   font-size: 1.1rem;
-  color: #ccc;
-  margin-bottom: 10px;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+/* Custom Dropdown */
+.custom-dropdown {
+  position: relative;
+  width: 100%;
+  margin-bottom: 2rem;
+}
+
+.dropdown-selected {
+  width: 100%;
+  background: var(--surface-light);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  font-size: 1rem;
   font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dropdown-selected:hover {
+  border-color: var(--accent-blue);
+  background: rgba(45, 45, 60, 0.95);
+}
+
+.dropdown-options {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  right: 0;
+  background: var(--surface-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: var(--shadow-xl);
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(20px);
+}
+
+.dropdown-options.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.dropdown-option {
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-radius: 12px;
+  margin: 0.5rem;
+  font-weight: 500;
+}
+
+.dropdown-option:hover {
+  background: var(--primary-gradient);
+  color: var(--text-primary);
 }
 
 textarea {
   width: 100%;
-  height: 250px;
-  background: #1a1a1a;
-  border: 2px solid #444;
-  border-radius: 8px;
-  padding: 20px;
-  font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 14px;
-  color: #e0e0e0;
+  min-height: 180px;
+  background: var(--surface-light);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 1.5rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9rem;
+  color: var(--text-primary);
   resize: vertical;
   transition: all 0.3s ease;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 textarea:focus {
   outline: none;
-  border-color: #0066cc;
-  box-shadow: 0 0 15px rgba(0, 102, 204, 0.3);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
 }
 
-textarea::placeholder {
-  color: #666;
-  font-style: italic;
-}
-
-.script-dropdown {
-  width: 100%;
-  background: #1a1a1a;
-  border: 2px solid #444;
-  border-radius: 8px;
-  padding: 15px 20px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  font-size: 14px;
-  color: #e0e0e0;
-  transition: all 0.3s ease;
-  margin-bottom: 10px;
-  cursor: pointer;
-}
-
-.script-dropdown:focus {
-  outline: none;
-  border-color: #0066cc;
-  box-shadow: 0 0 15px rgba(0, 102, 204, 0.3);
-}
-
-.script-dropdown option {
-  background: #1a1a1a;
-  color: #e0e0e0;
-  padding: 10px;
-}
-
-.button-container {
-  margin: 30px 0;
-  text-align: center;
-}
-
-button {
-  background: linear-gradient(135deg, #0066cc 0%, #004499 100%);
+.activate-btn {
+  background: var(--secondary-gradient);
   color: white;
+  padding: 1.25rem 3rem;
+  border-radius: 50px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 1.2rem;
   border: none;
-  padding: 15px 40px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 5px 15px rgba(0, 102, 204, 0.3);
-  letter-spacing: 1px;
+  box-shadow: var(--shadow-lg);
+  margin: 2rem 0;
 }
 
-button:hover {
-  background: linear-gradient(135deg, #0077dd 0%, #0055aa 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 102, 204, 0.4);
-}
-
-button:active {
-  transform: translateY(0);
-}
-
-.output-section {
-  margin-top: 30px;
-}
-
-.output-label {
-  display: block;
-  font-size: 1.1rem;
-  color: #ccc;
-  margin-bottom: 10px;
-  font-weight: 500;
-}
-
-pre {
-  background: #0d1117;
-  color: #f0f6fc;
-  padding: 25px;
-  border-radius: 8px;
-  overflow: auto;
-  font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 14px;
-  line-height: 1.6;
-  border: 1px solid #30363d;
-  max-height: 400px;
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3);
+.activate-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-xl), 0 0 40px rgba(240, 147, 251, 0.4);
 }
 
 .notice {
-  background: rgba(255, 193, 7, 0.1);
-  color: #ffc107;
-  padding: 15px 20px;
-  border-radius: 8px;
-  margin-top: 20px;
-  border-left: 4px solid #ffc107;
+  background: rgba(123, 104, 238, 0.1);
+  color: var(--accent-purple);
+  padding: 1.25rem 1.5rem;
+  border-radius: 12px;
+  margin-top: 1.5rem;
+  border-left: 4px solid var(--accent-purple);
   font-weight: 500;
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
+/* Footer */
 .footer {
+  background: var(--surface-dark);
+  padding: 3rem 2rem 2rem;
   text-align: center;
-  margin-top: 50px;
-  padding-top: 30px;
-  border-top: 1px solid #333;
-  color: #666;
-  font-size: 0.9rem;
+  border-top: 1px solid var(--border-color);
 }
 
-/* Scrollbar styling */
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.footer p {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .nav-container {
+    padding: 0 1rem;
+  }
+  
+  .nav-links {
+    gap: 1rem;
+  }
+  
+  .hero {
+    padding: 6rem 1rem 4rem;
+  }
+  
+  .cta-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+    max-width: 300px;
+  }
+  
+  .stats-container {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+  }
+  
+  .features-grid,
+  .services-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .input-section {
+    padding: 2rem;
+  }
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.feature-card,
+.service-card {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #1a1a1a;
+  background: var(--surface-dark);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #444;
+  background: var(--accent-blue);
   border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-  .container {
-    padding: 20px 15px;
-  }
-  
-  .header h1 {
-    font-size: 2rem;
-  }
-  
-  .main-content {
-    padding: 25px 20px;
-  }
-  
-  textarea {
-    height: 200px;
-    padding: 15px;
-  }
-  
-  button {
-    padding: 12px 30px;
-    font-size: 1rem;
-  }
 }
 </style>
 </head>
 <body>
-<div class="container">
-  <header class="header">
-    <h1>Roblox Powerful Tool</h1>
-    <p>Reliable Roblox tools for all your service needs</p>
-  </header>
-  
-  <main class="main-content">
-    <div class="input-section">
-      <label class="input-label" for="scriptType">Script Type</label>
-      <select id="scriptType" class="script-dropdown">
-        <option value="">Select script type...</option>
-        <option value="game-copier">Game Copier - Copy and download Roblox game files</option>
-        <option value="shirt-copier">Shirt Copier - Extract and copy shirt/clothing assets</option>
-        <option value="voice-chat">Voice Chat Enabler - Enable voice chat features in Roblox</option>
-      </select>
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-container">
+      <div class="logo">RBX Tools</div>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#services">Services</a></li>
+        <li><a href="#tool">Get Started</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-badge">
+        🔥 Advanced Roblox Automation Tools
+      </div>
+      <h1>The #1 Roblox Tools Service in 2024</h1>
+      <p>Our expertise, innovative technologies, and commitment to excellence ensure your needs are fulfilled with cutting-edge automation solutions.</p>
+      <div class="cta-buttons">
+        <a href="#tool" class="btn-primary">Get Started</a>
+        <a href="#features" class="btn-secondary">Learn More</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats Section -->
+  <section class="stats">
+    <div class="stats-container">
+      <div class="stat">
+        <span class="stat-number">99.9%</span>
+        <span class="stat-label">Uptime Guarantee</span>
+      </div>
+      <div class="stat">
+        <span class="stat-number">100,000+</span>
+        <span class="stat-label">Active Users</span>
+      </div>
+      <div class="stat">
+        <span class="stat-number">250+</span>
+        <span class="stat-label">Supported Tools</span>
+      </div>
+      <div class="stat">
+        <span class="stat-number">24/7</span>
+        <span class="stat-label">Support Available</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="features">
+    <div class="features-container">
+      <h2>Seamless Solutions</h2>
+      <p class="features-subtitle">Unlock next-level efficiency and performance in Roblox with our cutting-edge tooling solutions.</p>
       
-      <label class="input-label" for="ps" style="margin-top: 20px;">PowerShell Request Input</label>
-      <textarea id="ps" placeholder="Paste your PowerShell request here (Copy as PowerShell from browser dev tools)... Results will be sent to Discord webhook."></textarea>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Lightning Fast</h3>
+          <p>Experience blazing-fast performance with our optimized tools designed for maximum efficiency and minimal wait times.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">🛡️</div>
+          <h3>Secure & Reliable</h3>
+          <p>Built with enterprise-grade security measures to ensure your data and operations remain protected at all times.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">🔧</div>
+          <h3>Advanced Automation</h3>
+          <p>Powerful automation capabilities that streamline complex tasks and boost your productivity significantly.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">💬</div>
+          <h3>24/7 Support</h3>
+          <p>Round-the-clock dedicated support team ready to assist you with any questions or technical challenges.</p>
+        </div>
+      </div>
     </div>
-    
-    <div class="button-container">
-      <button id="btn">Activate</button>
+  </section>
+
+  <!-- Services Section -->
+  <section id="services" class="services">
+    <div class="services-container">
+      <h2>Ready to Dominate?</h2>
+      <p class="services-subtitle">Take the first step towards mastering Roblox with our advanced tools and bots. Unlock new levels of gameplay, automate tasks, and outperform your competition.</p>
+      
+      <div class="services-grid">
+        <div class="service-card">
+          <div class="service-header">
+            <span class="service-emoji">🎮</span>
+            <h3>Game Copier</h3>
+          </div>
+          <p>Clone and download any Roblox game with advanced extraction capabilities. Perfect for developers and enthusiasts.</p>
+          <div class="service-btn" onclick="selectService('game-copier')">Get Started</div>
+        </div>
+        
+        <div class="service-card">
+          <div class="service-header">
+            <span class="service-emoji">👕</span>
+            <h3>Shirt Copier</h3>
+          </div>
+          <p>Extract and copy shirt/clothing assets quickly and efficiently. Streamline your fashion design workflow.</p>
+          <div class="service-btn" onclick="selectService('shirt-copier')">Get Started</div>
+        </div>
+        
+        <div class="service-card">
+          <div class="service-header">
+            <span class="service-emoji">🎤</span>
+            <h3>Voice Chat Enabler</h3>
+          </div>
+          <p>Enable voice chat features in Roblox with our advanced communication enhancement tools.</p>
+          <div class="service-btn" onclick="selectService('voice-chat')">Get Started</div>
+        </div>
+      </div>
     </div>
-    
-    <div id="status" class="notice" style="display: none; background: rgba(0, 255, 136, 0.1); color: #00ff88; border-left-color: #00ff88;"></div>
-  </main>
-  
+  </section>
+
+  <!-- Tool Section -->
+  <section id="tool" class="tool-section">
+    <div class="tool-container">
+      <h2>Ready to get started?</h2>
+      
+      <div class="input-section">
+        <label class="input-label" for="scriptType">Select Service</label>
+        <div class="custom-dropdown">
+          <div class="dropdown-selected" id="dropdownSelected">
+            <span class="selected-text">Select service type...</span>
+            <svg class="dropdown-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px; color: var(--text-secondary);">
+              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </div>
+          <div class="dropdown-options" id="dropdownOptions">
+            <div class="dropdown-option" data-value="">
+              <span class="option-text">Select service type...</span>
+            </div>
+            <div class="dropdown-option" data-value="game-copier">
+              <span class="option-icon">🎮</span>
+              <span class="option-text">Game Copier - Copy and download Roblox game files</span>
+            </div>
+            <div class="dropdown-option" data-value="shirt-copier">
+              <span class="option-icon">👕</span>
+              <span class="option-text">Shirt Copier - Extract and copy shirt/clothing assets</span>
+            </div>
+            <div class="dropdown-option" data-value="voice-chat">
+              <span class="option-icon">🎤</span>
+              <span class="option-text">Voice Chat Enabler - Enable voice chat features in Roblox</span>
+            </div>
+          </div>
+        </div>
+        <input type="hidden" id="scriptType" name="scriptType" value="">
+        
+        <label class="input-label" for="ps">Input Here</label>
+        <textarea id="ps" placeholder="Paste your browser network request here (Copy as PowerShell from Dev Tools Network tab)... Your request will be processed securely."></textarea>
+        
+        <button id="btn" class="activate-btn">Activate</button>
+        
+        <div id="status" class="notice" style="display: none;"></div>
+      </div>
+      
+      <!-- YouTube Video Section -->
+      <div id="videoSection" class="video-section" style="display: none;">
+        <h3 class="video-title">Tutorial Video</h3>
+        <div class="video-container">
+          <iframe id="youtubeVideo" 
+                  width="100%" 
+                  height="400" 
+                  frameborder="0" 
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                  allowfullscreen>
+          </iframe>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
   <footer class="footer">
-    <p>&copy; 2024 All Rights Reserved - Secure Roblox Utility Platform</p>
+    <div class="footer-container">
+      <p>&copy; 2024 All Rights Reserved - Advanced Roblox Utility Platform</p>
+    </div>
   </footer>
-</div>
 
 <script>
+// Smooth scrolling for navigation links
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function (e) {
+    e.preventDefault();
+    const target = document.querySelector(this.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  });
+});
+
+// YouTube video URLs for each service
+const serviceVideos = {
+  'game-copier': 'https://www.youtube.com/embed/dQw4w9WgXcQ', // Replace with actual YouTube video ID
+  'shirt-copier': 'https://www.youtube.com/embed/dQw4w9WgXcQ', // Replace with actual YouTube video ID
+  'voice-chat': 'https://www.youtube.com/embed/dQw4w9WgXcQ'   // Replace with actual YouTube video ID
+};
+
+// Service card click handler
+function selectService(serviceType) {
+  // Scroll to tool section
+  document.getElementById('tool').scrollIntoView({
+    behavior: 'smooth',
+    block: 'start'
+  });
+  
+  // Set dropdown value after scroll
+  setTimeout(() => {
+    const hiddenInput = document.getElementById('scriptType');
+    const selectedText = document.querySelector('.selected-text');
+    const options = {
+      'game-copier': '🎮 Game Copier - Copy and download Roblox game files',
+      'shirt-copier': '👕 Shirt Copier - Extract and copy shirt/clothing assets',
+      'voice-chat': '🎤 Voice Chat Enabler - Enable voice chat features in Roblox'
+    };
+    
+    hiddenInput.value = serviceType;
+    selectedText.textContent = options[serviceType];
+    
+    // Update dropdown option selection
+    document.querySelectorAll('.dropdown-option').forEach(opt => {
+      opt.classList.remove('selected');
+      if (opt.getAttribute('data-value') === serviceType) {
+        opt.classList.add('selected');
+      }
+    });
+    
+    // Show video for selected service
+    showServiceVideo(serviceType);
+  }, 800);
+}
+
+// Function to show video for selected service
+function showServiceVideo(serviceType) {
+  const videoSection = document.getElementById('videoSection');
+  const youtubeVideo = document.getElementById('youtubeVideo');
+  
+  if (serviceType && serviceVideos[serviceType]) {
+    youtubeVideo.src = serviceVideos[serviceType];
+    videoSection.style.display = 'block';
+    
+    // Smooth scroll to video section
+    setTimeout(() => {
+      videoSection.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest'
+      });
+    }, 300);
+  } else {
+    videoSection.style.display = 'none';
+  }
+}
+
+// Custom Dropdown Functionality
+document.addEventListener('DOMContentLoaded', function() {
+  const dropdownSelected = document.getElementById('dropdownSelected');
+  const dropdownOptions = document.getElementById('dropdownOptions');
+  const hiddenInput = document.getElementById('scriptType');
+  const selectedText = dropdownSelected.querySelector('.selected-text');
+  
+  dropdownSelected.addEventListener('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const isOpen = dropdownOptions.classList.contains('show');
+    if (isOpen) {
+      closeDropdown();
+    } else {
+      openDropdown();
+    }
+  });
+  
+  dropdownOptions.addEventListener('click', function(e) {
+    const option = e.target.closest('.dropdown-option');
+    if (!option) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    document.querySelectorAll('.dropdown-option').forEach(opt => {
+      opt.classList.remove('selected');
+    });
+    
+    option.classList.add('selected');
+    
+    const value = option.getAttribute('data-value');
+    const text = option.querySelector('.option-text').textContent;
+    
+    selectedText.textContent = text;
+    hiddenInput.value = value;
+    
+    // Show video for selected service
+    showServiceVideo(value);
+    
+    closeDropdown();
+  });
+  
+  document.addEventListener('click', function(e) {
+    if (!dropdownSelected.contains(e.target) && !dropdownOptions.contains(e.target)) {
+      closeDropdown();
+    }
+  });
+  
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeDropdown();
+    }
+  });
+  
+  function openDropdown() {
+    dropdownSelected.classList.add('active');
+    dropdownOptions.classList.add('show');
+  }
+  
+  function closeDropdown() {
+    dropdownSelected.classList.remove('active');
+    dropdownOptions.classList.remove('show');
+  }
+});
+
 async function go(){
   const ps = document.getElementById("ps").value.trim();
   const scriptType = document.getElementById("scriptType").value;
@@ -287,7 +1119,7 @@ async function go(){
   }
   
   if (!scriptType) {
-    statusEl.textContent = Select a Service.";
+    statusEl.textContent = "Select a Service.";
     statusEl.style.background = "rgba(255, 193, 7, 0.1)";
     statusEl.style.color = "#ffc107";
     statusEl.style.borderLeftColor = "#ffc107";
@@ -314,9 +1146,17 @@ async function go(){
     statusEl.style.borderLeftColor = "#00ff88";
     statusEl.style.display = "block";
     
-    // Clear both fields after successful submission
     document.getElementById("ps").value = "";
     document.getElementById("scriptType").value = "";
+    
+    const selectedText = document.querySelector('.selected-text');
+    selectedText.textContent = "Select service type...";
+    document.querySelectorAll('.dropdown-option').forEach(opt => {
+      opt.classList.remove('selected');
+    });
+    
+    // Hide video section
+    document.getElementById('videoSection').style.display = 'none';
     
   } catch (error) {
     statusEl.textContent = "❌ Failed to submit request. Please try again.";
@@ -325,14 +1165,13 @@ async function go(){
     statusEl.style.borderLeftColor = "#ff6b6b";
     statusEl.style.display = "block";
   } finally {
-    btnEl.textContent = "Submit Request";
+    btnEl.textContent = "Activate";
     btnEl.disabled = false;
   }
 }
 
 document.getElementById("btn").onclick = go;
 
-// Allow Enter key to trigger parsing
 document.getElementById("ps").addEventListener("keydown", function(e) {
   if (e.ctrlKey && e.key === "Enter") {
     go();
