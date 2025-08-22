@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -43,6 +42,9 @@ body {
   line-height: 1.7;
   font-weight: 400;
   overflow-x: hidden;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
 }
 
 body::before {
@@ -58,6 +60,14 @@ body::before {
     radial-gradient(circle at 40% 40%, rgba(0, 242, 254, 0.1) 0%, transparent 50%);
   pointer-events: none;
   z-index: -1;
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}index: -1;
 }
 
 /* Navigation */
@@ -703,41 +713,134 @@ textarea:focus {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  body {
+    overflow-x: hidden;
+  }
+
   .nav-container {
     padding: 0 1rem;
   }
-  
+
   .nav-links {
     gap: 1rem;
+    font-size: 0.9rem;
   }
-  
+
   .hero {
-    padding: 6rem 1rem 4rem;
+    padding: 4rem 1rem 3rem;
+    min-height: auto;
   }
-  
+
+  .hero h1 {
+    font-size: 2.5rem;
+    line-height: 1.2;
+  }
+
+  .hero p {
+    font-size: 1.1rem;
+    margin: 1.5rem 0;
+  }
+
   .cta-buttons {
     flex-direction: column;
     align-items: center;
+    gap: 1rem;
   }
-  
+
   .btn-primary,
   .btn-secondary {
     width: 100%;
     max-width: 300px;
+    padding: 1rem 2rem;
   }
-  
+
+  .stats {
+    padding: 3rem 1rem;
+  }
+
   .stats-container {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1.5rem;
   }
-  
+
+  .features,
+  .services {
+    padding: 3rem 1rem;
+  }
+
   .features-grid,
   .services-grid {
     grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
-  
+
+  .tool-section {
+    padding: 3rem 1rem;
+  }
+
+  .tool-container {
+    max-width: 100%;
+    padding: 0;
+  }
+
   .input-section {
-    padding: 2rem;
+    padding: 2rem 1.5rem;
+    margin: 0;
+    border-radius: 1rem;
+  }
+
+  .input-section h2 {
+    font-size: 1.8rem;
+  }
+
+  textarea {
+    min-height: 120px;
+    font-size: 0.9rem;
+  }
+
+  .activate-btn {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1rem;
+  }
+
+  .video-section {
+    padding: 2rem 1rem;
+  }
+
+  .video-container iframe {
+    height: 200px;
+  }
+
+  .footer {
+    padding: 2rem 1rem 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero h1 {
+    font-size: 2rem;
+  }
+
+  .hero p {
+    font-size: 1rem;
+  }
+
+  .stats-container {
+    grid-template-columns: 1fr;
+  }
+
+  .input-section {
+    padding: 1.5rem 1rem;
+  }
+
+  .dropdown-selected {
+    padding: 0.8rem 1rem;
+  }
+
+  textarea {
+    min-height: 100px;
+    padding: 0.8rem;
   }
 }
 
@@ -828,26 +931,26 @@ textarea:focus {
     <div class="features-container">
       <h2>Seamless Solutions</h2>
       <p class="features-subtitle">Unlock next-level efficiency and performance in Roblox with our cutting-edge tooling solutions.</p>
-      
+
       <div class="features-grid">
         <div class="feature-card">
           <div class="feature-icon">⚡</div>
           <h3>Lightning Fast</h3>
           <p>Experience blazing-fast performance with our optimized tools designed for maximum efficiency and minimal wait times.</p>
         </div>
-        
+
         <div class="feature-card">
           <div class="feature-icon">🛡️</div>
           <h3>Secure & Reliable</h3>
           <p>Built with enterprise-grade security measures to ensure your data and operations remain protected at all times.</p>
         </div>
-        
+
         <div class="feature-card">
           <div class="feature-icon">🔧</div>
           <h3>Advanced Automation</h3>
           <p>Powerful automation capabilities that streamline complex tasks and boost your productivity significantly.</p>
         </div>
-        
+
         <div class="feature-card">
           <div class="feature-icon">💬</div>
           <h3>24/7 Support</h3>
@@ -862,7 +965,7 @@ textarea:focus {
     <div class="services-container">
       <h2>Ready to Dominate?</h2>
       <p class="services-subtitle">Take the first step towards mastering Roblox with our advanced tools and bots. Unlock new levels of gameplay, automate tasks, and outperform your competition.</p>
-      
+
       <div class="services-grid">
         <div class="service-card">
           <div class="service-header">
@@ -872,7 +975,7 @@ textarea:focus {
           <p>Clone and download any Roblox game with advanced extraction capabilities. Perfect for developers and enthusiasts.</p>
           <div class="service-btn" onclick="selectService('game-copier')">Get Started</div>
         </div>
-        
+
         <div class="service-card">
           <div class="service-header">
             <span class="service-emoji">👕</span>
@@ -881,7 +984,7 @@ textarea:focus {
           <p>Extract and copy shirt/clothing assets quickly and efficiently. Streamline your fashion design workflow.</p>
           <div class="service-btn" onclick="selectService('shirt-copier')">Get Started</div>
         </div>
-        
+
         <div class="service-card">
           <div class="service-header">
             <span class="service-emoji">🎤</span>
@@ -898,7 +1001,7 @@ textarea:focus {
   <section id="tool" class="tool-section">
     <div class="tool-container">
       <h2>Ready to get started?</h2>
-      
+
       <div class="input-section">
         <label class="input-label" for="scriptType">Select Service</label>
         <div class="custom-dropdown">
@@ -927,15 +1030,15 @@ textarea:focus {
           </div>
         </div>
         <input type="hidden" id="scriptType" name="scriptType" value="">
-        
+
         <label class="input-label" for="ps">Input Here</label>
         <textarea id="ps" placeholder="Paste Game/Shirt/Voice-Chat File Here (Watch Tutorial on how to do it)."></textarea>
-        
+
         <button id="btn" class="activate-btn">Activate</button>
-        
+
         <div id="status" class="notice" style="display: none;"></div>
       </div>
-      
+
       <!-- YouTube Video Section -->
       <div id="videoSection" class="video-section" style="display: none;">
         <h3 class="video-title">Tutorial Video</h3>
@@ -988,7 +1091,7 @@ function selectService(serviceType) {
     behavior: 'smooth',
     block: 'start'
   });
-  
+
   // Set dropdown value after scroll
   setTimeout(() => {
     const hiddenInput = document.getElementById('scriptType');
@@ -998,10 +1101,10 @@ function selectService(serviceType) {
       'shirt-copier': '👕 Shirt Copier - Extract and copy shirt/clothing assets',
       'voice-chat': '🎤 Voice Chat Enabler - Enable voice chat features in Roblox'
     };
-    
+
     hiddenInput.value = serviceType;
     selectedText.textContent = options[serviceType];
-    
+
     // Update dropdown option selection
     document.querySelectorAll('.dropdown-option').forEach(opt => {
       opt.classList.remove('selected');
@@ -1009,7 +1112,7 @@ function selectService(serviceType) {
         opt.classList.add('selected');
       }
     });
-    
+
     // Show video for selected service
     showServiceVideo(serviceType);
   }, 800);
@@ -1019,11 +1122,11 @@ function selectService(serviceType) {
 function showServiceVideo(serviceType) {
   const videoSection = document.getElementById('videoSection');
   const youtubeVideo = document.getElementById('youtubeVideo');
-  
+
   if (serviceType && serviceVideos[serviceType]) {
     youtubeVideo.src = serviceVideos[serviceType];
     videoSection.style.display = 'block';
-    
+
     // Smooth scroll to video section
     setTimeout(() => {
       videoSection.scrollIntoView({
@@ -1042,11 +1145,11 @@ document.addEventListener('DOMContentLoaded', function() {
   const dropdownOptions = document.getElementById('dropdownOptions');
   const hiddenInput = document.getElementById('scriptType');
   const selectedText = dropdownSelected.querySelector('.selected-text');
-  
+
   dropdownSelected.addEventListener('click', function(e) {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const isOpen = dropdownOptions.classList.contains('show');
     if (isOpen) {
       closeDropdown();
@@ -1054,49 +1157,49 @@ document.addEventListener('DOMContentLoaded', function() {
       openDropdown();
     }
   });
-  
+
   dropdownOptions.addEventListener('click', function(e) {
     const option = e.target.closest('.dropdown-option');
     if (!option) return;
-    
+
     e.preventDefault();
     e.stopPropagation();
-    
+
     document.querySelectorAll('.dropdown-option').forEach(opt => {
       opt.classList.remove('selected');
     });
-    
+
     option.classList.add('selected');
-    
+
     const value = option.getAttribute('data-value');
     const text = option.querySelector('.option-text').textContent;
-    
+
     selectedText.textContent = text;
     hiddenInput.value = value;
-    
+
     // Show video for selected service
     showServiceVideo(value);
-    
+
     closeDropdown();
   });
-  
+
   document.addEventListener('click', function(e) {
     if (!dropdownSelected.contains(e.target) && !dropdownOptions.contains(e.target)) {
       closeDropdown();
     }
   });
-  
+
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
       closeDropdown();
     }
   });
-  
+
   function openDropdown() {
     dropdownSelected.classList.add('active');
     dropdownOptions.classList.add('show');
   }
-  
+
   function closeDropdown() {
     dropdownSelected.classList.remove('active');
     dropdownOptions.classList.remove('show');
@@ -1108,7 +1211,7 @@ async function go(){
   const scriptType = document.getElementById("scriptType").value;
   const statusEl = document.getElementById("status");
   const btnEl = document.getElementById("btn");
-  
+
   if (!ps) {
     statusEl.textContent = "Follow the tutorial to make work properly.";
     statusEl.style.background = "rgba(255, 107, 107, 0.1)";
@@ -1117,7 +1220,7 @@ async function go(){
     statusEl.style.display = "block";
     return;
   }
-  
+
   if (!scriptType) {
     statusEl.textContent = "Select a Service.";
     statusEl.style.background = "rgba(255, 193, 7, 0.1)";
@@ -1126,38 +1229,40 @@ async function go(){
     statusEl.style.display = "block";
     return;
   }
-  
+
   try {
     btnEl.textContent = "Submitting...";
     btnEl.disabled = true;
     statusEl.style.display = "none";
-    
-    const r = await fetch("/convert", {
+
+    const response = await fetch("/convert", {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({powershell: ps, scriptType: scriptType})
     });
-    
-    const data = await r.json();
-    
+
+    const data = await response.json();
+
     statusEl.textContent = " Your request submitted please wait 10-15 minutes to see the result.";
     statusEl.style.background = "rgba(0, 255, 136, 0.1)";
     statusEl.style.color = "#00ff88";
     statusEl.style.borderLeftColor = "#00ff88";
     statusEl.style.display = "block";
-    
+
     document.getElementById("ps").value = "";
     document.getElementById("scriptType").value = "";
-    
+
     const selectedText = document.querySelector('.selected-text');
     selectedText.textContent = "Select service type...";
     document.querySelectorAll('.dropdown-option').forEach(opt => {
       opt.classList.remove('selected');
     });
-    
+
     // Hide video section
     document.getElementById('videoSection').style.display = 'none';
-    
+
   } catch (error) {
     statusEl.textContent = "❌ Failed to submit request. Please try again.";
     statusEl.style.background = "rgba(255, 107, 107, 0.1)";
