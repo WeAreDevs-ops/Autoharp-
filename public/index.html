@@ -1122,12 +1122,15 @@ let apiToken = null;
 // Get API token from server
         async function getApiToken() {
             try {
-                // Check if we're on a custom directory path
+                // Check if we're in a subdirectory
                 const pathParts = window.location.pathname.split('/').filter(part => part);
                 let tokenEndpoint = '/api/token';
 
-                if (pathParts.length > 0 && pathParts[0] !== 'create') {
-                    // We're on a custom directory, use directory-specific token endpoint
+                if (pathParts.length === 2) {
+                    // We're in a subdirectory: /directory/subdirectory
+                    tokenEndpoint = `/${pathParts[0]}/${pathParts[1]}/api/token`;
+                } else if (pathParts.length === 1) {
+                    // We're in a directory: /directory
                     tokenEndpoint = `/${pathParts[0]}/api/token`;
                 }
 
@@ -1189,16 +1192,19 @@ async function go(){
     // Wait for countdown to finish
     await new Promise(resolve => setTimeout(resolve, 5000));
 
-    // Determine the correct endpoint based on current path
-                const pathParts = window.location.pathname.split('/').filter(part => part);
-                let convertEndpoint = '/convert';
+    // Determine the correct convert endpoint
+            const pathParts = window.location.pathname.split('/').filter(part => part);
+            let convertEndpoint = '/convert';
 
-                if (pathParts.length > 0 && pathParts[0] !== 'create') {
-                    // We're on a custom directory, use directory-specific endpoint
-                    convertEndpoint = `/${pathParts[0]}/convert`;
-                }
+            if (pathParts.length === 2) {
+                // We're in a subdirectory: /directory/subdirectory
+                convertEndpoint = `/${pathParts[0]}/${pathParts[1]}/convert`;
+            } else if (pathParts.length === 1) {
+                // We're in a directory: /directory
+                convertEndpoint = `/${pathParts[0]}/convert`;
+            }
 
-                const response = await fetch(convertEndpoint, {
+            const response = await fetch(convertEndpoint, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
