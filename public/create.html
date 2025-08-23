@@ -16,6 +16,7 @@
             --accent-purple: #7b68ee;
             --border-color: rgba(255, 255, 255, 0.1);
             --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
         }
 
         * {
@@ -32,7 +33,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 2rem;
+            padding: 1rem;
+            line-height: 1.6;
         }
 
         .container {
@@ -40,29 +42,65 @@
             width: 100%;
             background: var(--surface-dark);
             border-radius: 20px;
-            padding: 3rem;
+            padding: 2rem;
             box-shadow: var(--shadow-xl);
             border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .tool-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin: 0 auto 1rem;
+            box-shadow: 0 0 30px rgba(74, 144, 226, 0.3);
         }
 
         h1 {
-            font-size: 2.5rem;
+            font-size: 2rem;
             font-weight: 800;
-            margin-bottom: 2rem;
-            text-align: center;
+            margin-bottom: 1rem;
             background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
-        .form-group {
+        .description {
+            color: var(--text-secondary);
             margin-bottom: 2rem;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
         }
 
         label {
             display: block;
-            font-size: 1.1rem;
+            font-size: 1rem;
             color: var(--text-primary);
             margin-bottom: 0.5rem;
             font-weight: 600;
@@ -77,12 +115,19 @@
             font-size: 1rem;
             color: var(--text-primary);
             transition: all 0.3s ease;
+            font-family: inherit;
         }
 
         input:focus {
             outline: none;
             border-color: var(--accent-blue);
             box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+            background: rgba(45, 45, 60, 0.9);
+        }
+
+        input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.7;
         }
 
         .create-btn {
@@ -92,36 +137,74 @@
             padding: 1.25rem;
             border-radius: 12px;
             border: none;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.3s ease;
             margin-top: 1rem;
+            font-family: inherit;
+            box-shadow: var(--shadow-lg);
         }
 
         .create-btn:hover {
             transform: translateY(-2px);
-            box-shadow: var(--shadow-xl);
+            box-shadow: var(--shadow-xl), 0 0 30px rgba(74, 144, 226, 0.4);
+        }
+
+        .create-btn:active {
+            transform: translateY(0);
         }
 
         .create-btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
+            box-shadow: var(--shadow-lg);
         }
 
-        .status {
-            padding: 1rem;
+        .test-section {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: var(--surface-light);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .test-section h2 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .test-btn {
+            width: 100%;
+            background: transparent;
+            color: var(--accent-blue);
+            padding: 0.875rem;
+            border: 1px solid var(--accent-blue);
             border-radius: 8px;
-            margin-top: 1rem;
-            border-left: 4px solid;
-            display: none;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
         }
 
-        .description {
-            color: var(--text-secondary);
-            margin-bottom: 2rem;
-            line-height: 1.6;
+        .test-btn:hover {
+            background: var(--accent-blue);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        #testResult {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
         }
 
         .url-preview {
@@ -130,39 +213,185 @@
             padding: 1rem;
             margin-top: 0.5rem;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: var(--accent-blue);
+            word-break: break-all;
+        }
+
+        .status-message {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .status-success {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #22c55e;
+        }
+
+        .status-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        /* Loading spinner */
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--text-secondary);
+            border-radius: 50%;
+            border-top-color: var(--accent-blue);
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Mobile-specific optimizations */
+        @media (max-width: 768px) {
+            body {
+                padding: 0.5rem;
+                align-items: flex-start;
+                padding-top: 2rem;
+            }
+
+            .container {
+                padding: 1.5rem;
+                border-radius: 16px;
+                min-height: auto;
+            }
+
+            .tool-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 1.5rem;
+            }
+
+            h1 {
+                font-size: 1.75rem;
+            }
+
+            .description {
+                font-size: 0.9rem;
+            }
+
+            input {
+                padding: 0.875rem;
+                font-size: 16px; /* Prevents zoom on iOS */
+            }
+
+            .create-btn {
+                padding: 1rem;
+                font-size: 1rem;
+            }
+
+            .test-section {
+                margin-top: 1.5rem;
+                padding: 1.25rem;
+            }
+
+            .url-preview {
+                font-size: 0.8rem;
+                padding: 0.875rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 1.25rem;
+                margin: 0.25rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .form-group {
+                margin-bottom: 1.25rem;
+            }
+
+            .test-section {
+                padding: 1rem;
+            }
+        }
+
+        /* Dark mode enhancements */
+        @media (prefers-color-scheme: dark) {
+            input:-webkit-autofill,
+            input:-webkit-autofill:hover,
+            input:-webkit-autofill:focus {
+                -webkit-box-shadow: 0 0 0 1000px var(--surface-light) inset !important;
+                -webkit-text-fill-color: var(--text-primary) !important;
+            }
+        }
+
+        /* Focus management for accessibility */
+        .create-btn:focus-visible,
+        .test-btn:focus-visible,
+        input:focus-visible {
+            outline: 2px solid var(--accent-blue);
+            outline-offset: 2px;
+        }
+
+        /* Smooth transitions */
+        .container,
+        .test-section,
+        input,
+        .create-btn,
+        .test-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔧 Create Directory</h1>
-        <p class="description">
-            Create a new directory path for your webhook service. Users will be able to access your service at the custom URL and all requests will be forwarded to your webhook.
-        </p>
+        <div class="header">
+            <div class="tool-icon">🔧</div>
+            <h1>Create Directory</h1>
+            <p class="description">
+                Create a new directory path for your webhook service. Users will be able to access your service at the custom URL and all requests will be forwarded to your webhook.
+            </p>
+        </div>
         
         <form id="createForm">
             <div class="form-group">
                 <label for="directoryName">Directory Name</label>
-                <input type="text" id="directoryName" placeholder="my-service" required pattern="[a-z0-9-]+" title="Only lowercase letters, numbers, and hyphens allowed">
-                <div class="url-preview">
-                    URL will be: <span id="urlPreview">example.com/[directory-name]</span>
-                </div>
+                <input 
+                    type="text" 
+                    id="directoryName" 
+                    placeholder="my-service" 
+                    required 
+                    pattern="[a-z0-9-]+" 
+                    title="Only lowercase letters, numbers, and hyphens allowed"
+                    autocomplete="off"
+                    spellcheck="false"
+                >
             </div>
             
             <div class="form-group">
                 <label for="webhookUrl">Your Webhook URL</label>
-                <input type="url" id="webhookUrl" placeholder="https://discord.com/api/webhooks/..." required>
+                <input 
+                    type="url" 
+                    id="webhookUrl" 
+                    placeholder="https://discord.com/api/webhooks/..." 
+                    required
+                    autocomplete="url"
+                >
             </div>
             
-            <div class="form-group">
-                <label for="adminPassword">Admin Password</label>
-                <input type="password" id="adminPassword" placeholder="Enter admin password" required>
-            </div>
-            
-            <button type="submit" class="create-btn" id="createBtn">Create Directory</button>
+            <button type="submit" class="create-btn" id="createBtn">
+                <span id="btnText">Create Directory</span>
+            </button>
         </form>
+        
+        <div class="status-message" id="statusMessage"></div>
         
         <div class="test-section" id="testSection" style="display: none;">
             <h2>🧪 Test Your Webhook</h2>
@@ -173,29 +402,63 @@
 
     <script>
         const directoryInput = document.getElementById('directoryName');
-        const urlPreview = document.getElementById('urlPreview');
+        const webhookInput = document.getElementById('webhookUrl');
         const createForm = document.getElementById('createForm');
+        const createBtn = document.getElementById('createBtn');
+        const btnText = document.getElementById('btnText');
+        const statusMessage = document.getElementById('statusMessage');
         const testSection = document.getElementById('testSection');
         const testBtn = document.getElementById('testBtn');
         const testResult = document.getElementById('testResult');
         
         let createdDirectory = null;
 
-        // Update URL preview
-        directoryInput.addEventListener('input', function() {
-            const value = this.value || '[directory-name]';
-            urlPreview.textContent = `${window.location.host}/${value}`;
-        });
+        // Form validation
+        function validateForm() {
+            const directoryName = directoryInput.value.trim();
+            const webhookUrl = webhookInput.value.trim();
+            
+            const isValidDirectory = /^[a-z0-9-]+$/.test(directoryName) && directoryName.length > 0;
+            const isValidWebhook = webhookUrl.startsWith('http') && webhookUrl.length > 0;
+            
+            createBtn.disabled = !(isValidDirectory && isValidWebhook);
+        }
+
+        // Real-time validation
+        directoryInput.addEventListener('input', validateForm);
+        webhookInput.addEventListener('input', validateForm);
+
+        // Show status message
+        function showStatus(message, type = 'success') {
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message status-${type}`;
+            statusMessage.style.display = 'block';
+            
+            setTimeout(() => {
+                statusMessage.style.display = 'none';
+            }, 5000);
+        }
+
+        // Set loading state
+        function setLoadingState(isLoading) {
+            createBtn.disabled = isLoading;
+            if (isLoading) {
+                btnText.innerHTML = '<span class="loading"></span>Creating...';
+            } else {
+                btnText.textContent = 'Create Directory';
+            }
+        }
 
         // Handle form submission
         createForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const formData = {
-                directoryName: directoryInput.value,
-                webhookUrl: document.getElementById('webhookUrl').value,
-                adminPassword: document.getElementById('adminPassword').value
+                directoryName: directoryInput.value.trim(),
+                webhookUrl: webhookInput.value.trim()
             };
+
+            setLoadingState(true);
 
             try {
                 const response = await fetch('/api/create-directory', {
@@ -209,14 +472,21 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    alert('Directory created successfully!');
+                    showStatus('Directory created successfully!', 'success');
                     createdDirectory = result.directoryName;
                     testSection.style.display = 'block';
+                    
+                    // Scroll to test section on mobile
+                    if (window.innerWidth <= 768) {
+                        testSection.scrollIntoView({ behavior: 'smooth' });
+                    }
                 } else {
-                    alert('Error: ' + result.error);
+                    showStatus('Error: ' + result.error, 'error');
                 }
             } catch (error) {
-                alert('Error creating directory: ' + error.message);
+                showStatus('Error creating directory: ' + error.message, 'error');
+            } finally {
+                setLoadingState(false);
             }
         });
 
@@ -224,7 +494,9 @@
         testBtn.addEventListener('click', async function() {
             if (!createdDirectory) return;
             
-            testResult.innerHTML = 'Testing webhook...';
+            testBtn.disabled = true;
+            testBtn.textContent = 'Testing...';
+            testResult.innerHTML = '<span class="loading"></span>Testing webhook...';
             
             try {
                 const response = await fetch('/test-webhook', {
@@ -247,76 +519,24 @@
                 }
             } catch (error) {
                 testResult.innerHTML = '❌ Error testing webhook: ' + error.message;
-            }
-        });
-    </script>
-</body>rm>
-        
-        <div id="status" class="status"></div>
-    </div>
-
-    <script>
-        document.getElementById('directoryName').addEventListener('input', function(e) {
-            const name = e.target.value;
-            const preview = document.getElementById('urlPreview');
-            if (name) {
-                preview.textContent = `${window.location.hostname}/${name}`;
-            } else {
-                preview.textContent = `${window.location.hostname}/[directory-name]`;
-            }
-        });
-
-        document.getElementById('createForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const btn = document.getElementById('createBtn');
-            const status = document.getElementById('status');
-            const directoryName = document.getElementById('directoryName').value;
-            const webhookUrl = document.getElementById('webhookUrl').value;
-            const adminPassword = document.getElementById('adminPassword').value;
-            
-            btn.disabled = true;
-            btn.textContent = 'Creating...';
-            
-            try {
-                const response = await fetch('/api/create-directory', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        directoryName,
-                        webhookUrl,
-                        adminPassword
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    status.textContent = `✅ Directory created successfully! Your service is now live at /${directoryName}`;
-                    status.style.background = "rgba(0, 255, 136, 0.1)";
-                    status.style.color = "#00ff88";
-                    status.style.borderLeftColor = "#00ff88";
-                    status.style.display = "block";
-                    
-                    // Clear form
-                    document.getElementById('createForm').reset();
-                    document.getElementById('urlPreview').textContent = `${window.location.hostname}/[directory-name]`;
-                } else {
-                    throw new Error(data.error || 'Failed to create directory');
-                }
-            } catch (error) {
-                status.textContent = `❌ ${error.message}`;
-                status.style.background = "rgba(255, 107, 107, 0.1)";
-                status.style.color = "#ff6b6b";
-                status.style.borderLeftColor = "#ff6b6b";
-                status.style.display = "block";
             } finally {
-                btn.disabled = false;
-                btn.textContent = 'Create Directory';
+                testBtn.disabled = false;
+                testBtn.textContent = 'Test Webhook';
             }
         });
+
+        // Initial validation
+        validateForm();
+
+        // Prevent zoom on iOS when focusing inputs
+        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    this.style.fontSize = '16px';
+                });
+            });
+        }
     </script>
 </body>
 </html>
