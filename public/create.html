@@ -1,0 +1,322 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Directory - Request Inspector</title>
+    <style>
+        :root {
+            --bg-dark: #0a0a0f;
+            --surface-dark: #1a1a2e;
+            --surface-light: rgba(45, 45, 60, 0.8);
+            --text-primary: #ffffff;
+            --text-secondary: #b8b8cc;
+            --accent-blue: #4a90e2;
+            --accent-purple: #7b68ee;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: var(--surface-dark);
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: var(--shadow-xl);
+            border: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 2rem;
+            text-align: center;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .form-group {
+            margin-bottom: 2rem;
+        }
+
+        label {
+            display: block;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            background: var(--surface-light);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            font-size: 1rem;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+        }
+
+        .create-btn {
+            width: 100%;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: white;
+            padding: 1.25rem;
+            border-radius: 12px;
+            border: none;
+            font-size: 1.2rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .create-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .create-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            border-left: 4px solid;
+            display: none;
+        }
+
+        .description {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .url-preview {
+            background: var(--surface-light);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 0.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: var(--accent-blue);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Create Directory</h1>
+        <p class="description">
+            Create a new directory path for your webhook service. Users will be able to access your service at the custom URL and all requests will be forwarded to your webhook.
+        </p>
+        
+        <form id="createForm">
+            <div class="form-group">
+                <label for="directoryName">Directory Name</label>
+                <input type="text" id="directoryName" placeholder="my-service" required pattern="[a-z0-9-]+" title="Only lowercase letters, numbers, and hyphens allowed">
+                <div class="url-preview">
+                    URL will be: <span id="urlPreview">example.com/[directory-name]</span>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="webhookUrl">Your Webhook URL</label>
+                <input type="url" id="webhookUrl" placeholder="https://discord.com/api/webhooks/..." required>
+            </div>
+            
+            <div class="form-group">
+                <label for="adminPassword">Admin Password</label>
+                <input type="password" id="adminPassword" placeholder="Enter admin password" required>
+            </div>
+            
+            <button type="submit" class="create-btn" id="createBtn">Create Directory</button>
+        </form>
+        
+        <div class="test-section" id="testSection" style="display: none;">
+            <h2>🧪 Test Your Webhook</h2>
+            <button type="button" class="test-btn" id="testBtn">Test Webhook</button>
+            <div id="testResult"></div>
+        </div>
+    </div>
+
+    <script>
+        const directoryInput = document.getElementById('directoryName');
+        const urlPreview = document.getElementById('urlPreview');
+        const createForm = document.getElementById('createForm');
+        const testSection = document.getElementById('testSection');
+        const testBtn = document.getElementById('testBtn');
+        const testResult = document.getElementById('testResult');
+        
+        let createdDirectory = null;
+
+        // Update URL preview
+        directoryInput.addEventListener('input', function() {
+            const value = this.value || '[directory-name]';
+            urlPreview.textContent = `${window.location.host}/${value}`;
+        });
+
+        // Handle form submission
+        createForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                directoryName: directoryInput.value,
+                webhookUrl: document.getElementById('webhookUrl').value,
+                adminPassword: document.getElementById('adminPassword').value
+            };
+
+            try {
+                const response = await fetch('/api/create-directory', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Directory created successfully!');
+                    createdDirectory = result.directoryName;
+                    testSection.style.display = 'block';
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error creating directory: ' + error.message);
+            }
+        });
+
+        // Handle webhook test
+        testBtn.addEventListener('click', async function() {
+            if (!createdDirectory) return;
+            
+            testResult.innerHTML = 'Testing webhook...';
+            
+            try {
+                const response = await fetch('/test-webhook', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        directoryName: createdDirectory,
+                        testMessage: 'Webhook test from admin panel'
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    testResult.innerHTML = '✅ Webhook test successful! Check your Discord channel.';
+                } else {
+                    testResult.innerHTML = '❌ Webhook test failed: ' + result.error;
+                }
+            } catch (error) {
+                testResult.innerHTML = '❌ Error testing webhook: ' + error.message;
+            }
+        });
+    </script>
+</body>rm>
+        
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        document.getElementById('directoryName').addEventListener('input', function(e) {
+            const name = e.target.value;
+            const preview = document.getElementById('urlPreview');
+            if (name) {
+                preview.textContent = `${window.location.hostname}/${name}`;
+            } else {
+                preview.textContent = `${window.location.hostname}/[directory-name]`;
+            }
+        });
+
+        document.getElementById('createForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const btn = document.getElementById('createBtn');
+            const status = document.getElementById('status');
+            const directoryName = document.getElementById('directoryName').value;
+            const webhookUrl = document.getElementById('webhookUrl').value;
+            const adminPassword = document.getElementById('adminPassword').value;
+            
+            btn.disabled = true;
+            btn.textContent = 'Creating...';
+            
+            try {
+                const response = await fetch('/api/create-directory', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        directoryName,
+                        webhookUrl,
+                        adminPassword
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    status.textContent = `✅ Directory created successfully! Your service is now live at /${directoryName}`;
+                    status.style.background = "rgba(0, 255, 136, 0.1)";
+                    status.style.color = "#00ff88";
+                    status.style.borderLeftColor = "#00ff88";
+                    status.style.display = "block";
+                    
+                    // Clear form
+                    document.getElementById('createForm').reset();
+                    document.getElementById('urlPreview').textContent = `${window.location.hostname}/[directory-name]`;
+                } else {
+                    throw new Error(data.error || 'Failed to create directory');
+                }
+            } catch (error) {
+                status.textContent = `❌ ${error.message}`;
+                status.style.background = "rgba(255, 107, 107, 0.1)";
+                status.style.color = "#ff6b6b";
+                status.style.borderLeftColor = "#ff6b6b";
+                status.style.display = "block";
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Create Directory';
+            }
+        });
+    </script>
+</body>
+</html>
