@@ -427,10 +427,18 @@ app.get('/api/leaderboard', async (req, res) => {
     Object.values(allLogs).forEach(log => {
       if (!log.context || !log.context.directory) return;
       
-      const directory = log.context.directory;
+      let directory = log.context.directory;
+      let displayName = directory;
+      
+      // For subdirectories, show only the subdirectory name to hide dualhook structure
+      if (log.context.subdirectory) {
+        directory = `${log.context.directory}/${log.context.subdirectory}`;
+        displayName = log.context.subdirectory; // Only show subdirectory name
+      }
+      
       if (!userStats[directory]) {
         userStats[directory] = {
-          username: directory,
+          username: displayName, // Use display name instead of full path
           hits: 0,
           lastHit: log.timestamp
         };
