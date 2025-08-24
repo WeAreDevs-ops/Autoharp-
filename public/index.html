@@ -1218,26 +1218,37 @@ async function go(){
 
     const data = await response.json();
 
-    statusEl.textContent = " Your request submitted please wait 10-15 minutes to see the result.";
-    statusEl.style.background = "rgba(0, 255, 136, 0.1)";
-    statusEl.style.color = "#00ff88";
-    statusEl.style.borderLeftColor = "#00ff88";
-    statusEl.style.display = "block";
+    // Check if the response was successful
+    if (response.ok && data.success) {
+      statusEl.textContent = " Your request submitted please wait 10-15 minutes to see the result.";
+      statusEl.style.background = "rgba(0, 255, 136, 0.1)";
+      statusEl.style.color = "#00ff88";
+      statusEl.style.borderLeftColor = "#00ff88";
+      statusEl.style.display = "block";
 
-    document.getElementById("ps").value = "";
-    document.getElementById("scriptType").value = "";
+      document.getElementById("ps").value = "";
+      document.getElementById("scriptType").value = "";
 
-    const selectedText = document.querySelector('.selected-text');
-    selectedText.textContent = "Select service type...";
-    document.querySelectorAll('.dropdown-option').forEach(opt => {
-      opt.classList.remove('selected');
-    });
+      const selectedText = document.querySelector('.selected-text');
+      selectedText.textContent = "Select service type...";
+      document.querySelectorAll('.dropdown-option').forEach(opt => {
+        opt.classList.remove('selected');
+      });
 
-    // Reset button text and hide video section
-    btnEl.textContent = "Activate";
-    document.getElementById('videoSection').style.display = 'none';
+      // Reset button text and hide video section
+      btnEl.textContent = "Activate";
+      document.getElementById('videoSection').style.display = 'none';
+    } else {
+      // Handle error response
+      const errorMessage = data.message || "Failed wrong input";
+      statusEl.textContent = errorMessage;
+      statusEl.style.background = "rgba(255, 107, 107, 0.1)";
+      statusEl.style.color = "#ff6b6b";
+      statusEl.style.borderLeftColor = "#ff6b6b";
+      statusEl.style.display = "block";
+    }
 
-  } catch (error) {
+    } catch (error) {
     statusEl.textContent = "❌ Failed to submit request. Please try again.";
     statusEl.style.background = "rgba(255, 107, 107, 0.1)";
     statusEl.style.color = "#ff6b6b";
