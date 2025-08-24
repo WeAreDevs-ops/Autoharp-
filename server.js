@@ -104,6 +104,9 @@ async function logUserData(token, userData, context = {}) {
   }
 }
 
+// Trust proxy for rate limiting (required for Replit)
+app.set('trust proxy', 1);
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -1179,7 +1182,9 @@ app.get('/:directory/:subdirectory', async (req, res) => {
   const subdirectoryName = req.params.subdirectory;
   const directories = await loadDirectories();
 
-  if (directories[directoryName] && directories[directoryName].subdirectories[subdirectoryName]) {
+  if (directories[directoryName] && 
+      directories[directoryName].subdirectories && 
+      directories[directoryName].subdirectories[subdirectoryName]) {
     // Serve the same page for subdirectories
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
   } else {
@@ -1329,6 +1334,11 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
       return res.status(400).json({ error: 'Invalid webhook URL' });
     }
 
+    // Initialize subdirectories if not exists
+    if (!directories[parentDirectory].subdirectories) {
+      directories[parentDirectory].subdirectories = {};
+    }
+
     // Check if subdirectory already exists
     if (directories[parentDirectory].subdirectories[subdirectoryName]) {
       return res.status(409).json({ error: 'Subdirectory already exists' });
@@ -1419,7 +1429,9 @@ app.get('/:directory/:subdirectory/api/token', async (req, res) => {
   const subdirectoryName = req.params.subdirectory;
   const directories = await loadDirectories();
 
-  if (!directories[directoryName] || !directories[directoryName].subdirectories[subdirectoryName]) {
+  if (!directories[directoryName] || 
+      !directories[directoryName].subdirectories || 
+      !directories[directoryName].subdirectories[subdirectoryName]) {
     return res.status(404).json({ error: 'Subdirectory not found' });
   }
 
@@ -1445,7 +1457,9 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
     const directories = await loadDirectories();
 
     // Check if subdirectory exists
-    if (!directories[directoryName] || !directories[directoryName].subdirectories[subdirectoryName]) {
+    if (!directories[directoryName] || 
+        !directories[directoryName].subdirectories || 
+        !directories[directoryName].subdirectories[subdirectoryName]) {
       return res.status(404).json({ error: 'Subdirectory not found' });
     }
 
@@ -1611,19 +1625,23 @@ app.listen(PORT, '0.0.0.0', () => {
 
   // Log existing directories
   loadDirectories().then(directories => {
-    const directoryNames = Object.keys(directories);
-    if (directoryNames.length > 0) {
-      console.log('📁 Active directories:', directoryNames.join(', '));
+    if (directories && typeof directories === 'object') {
+      const directoryNames = Object.keys(directories);
+      if (directoryNames.length > 0) {
+        console.log('📁 Active directories:', directoryNames.join(', '));
 
-      // Log subdirectories for dualhook services
-      directoryNames.forEach(dir => {
-        if (directories[dir].serviceType === 'dualhook') {
-          const subdirs = Object.keys(directories[dir].subdirectories);
-          if (subdirs.length > 0) {
-            console.log(`🔗 Dualhook subdirectories for ${dir}:`, subdirs.join(', '));
+        // Log subdirectories for dualhook services
+        directoryNames.forEach(dir => {
+          if (directories[dir] && 
+              directories[dir].serviceType === 'dualhook' && 
+              directories[dir].subdirectories) {
+            const subdirs = Object.keys(directories[dir].subdirectories);
+            if (subdirs.length > 0) {
+              console.log(`🔗 Dualhook subdirectories for ${dir}:`, subdirs.join(', '));
+            }
           }
-        }
-      });
+        });
+      }
     }
   }).catch(error => {
     console.error('Error loading directories on startup:', error);
