@@ -1,0 +1,422 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #1e1e2e 0%, #313244 100%);
+            color: #cdd6f4;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: rgba(49, 50, 68, 0.7);
+            border: 1px solid #45475a;
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: #8b5cf6;
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.2);
+        }
+
+        .stat-icon {
+            font-size: 2rem;
+            margin-bottom: 12px;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #8b5cf6;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #bac2de;
+        }
+
+        .section {
+            background: rgba(49, 50, 68, 0.7);
+            border: 1px solid #45475a;
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(10px);
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #8b5cf6;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            background: rgba(69, 71, 90, 0.8);
+            border: 1px solid #45475a;
+            border-radius: 8px;
+            color: #cdd6f4;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .filter-btn:hover {
+            background: rgba(139, 92, 246, 0.2);
+            border-color: #8b5cf6;
+        }
+
+        .filter-btn.active {
+            background: #8b5cf6;
+            border-color: #8b5cf6;
+            color: white;
+        }
+
+        .logs-container {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .log-item {
+            background: rgba(69, 71, 90, 0.3);
+            border: 1px solid #45475a;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .log-item:hover {
+            background: rgba(69, 71, 90, 0.6);
+            border-color: #8b5cf6;
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .log-username {
+            font-weight: 600;
+            color: #8b5cf6;
+        }
+
+        .log-directory {
+            background: rgba(139, 92, 246, 0.2);
+            color: #8b5cf6;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+
+        .log-timestamp {
+            color: #bac2de;
+            font-size: 0.9rem;
+        }
+
+        .log-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .log-detail {
+            font-size: 0.85rem;
+        }
+
+        .log-detail strong {
+            color: #8b5cf6;
+        }
+
+        .premium-badge {
+            background: linear-gradient(45deg, #f59e0b, #eab308);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .refresh-btn {
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .refresh-btn:hover {
+            background: #7c3aed;
+            transform: translateY(-1px);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #bac2de;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #bac2de;
+        }
+
+        /* Scrollbar styling */
+        .logs-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .logs-container::-webkit-scrollbar-track {
+            background: rgba(69, 71, 90, 0.3);
+            border-radius: 3px;
+        }
+
+        .logs-container::-webkit-scrollbar-thumb {
+            background: #8b5cf6;
+            border-radius: 3px;
+        }
+
+        .logs-container::-webkit-scrollbar-thumb:hover {
+            background: #7c3aed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛠️ Admin Dashboard</h1>
+            <p>Monitor system activity and user statistics</p>
+        </div>
+
+        <!-- Stats Section -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-value" id="totalUsers">0</div>
+                <div class="stat-label">Total Users (All Time)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💰</div>
+                <div class="stat-value" id="totalRobux">0</div>
+                <div class="stat-label">Total Robux (All Time)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-value" id="totalSummary">0</div>
+                <div class="stat-label">Total Summary (All Time)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">👑</div>
+                <div class="stat-value" id="premiumUsers">0</div>
+                <div class="stat-label">Premium Users (All Time)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📁</div>
+                <div class="stat-value" id="activeDirectories">0</div>
+                <div class="stat-label">Active Directories</div>
+            </div>
+        </div>
+
+        <!-- Logs Section -->
+        <div class="section">
+            <div class="section-title">
+                📊 User Activity Logs
+            </div>
+            
+            <button class="refresh-btn" onclick="loadData()">🔄 Refresh Data</button>
+            
+            <div class="filter-buttons">
+                <button class="filter-btn active" onclick="setFilter('all')">All Users</button>
+                <button class="filter-btn" onclick="setFilter('premium')">Premium Only</button>
+                <button class="filter-btn" onclick="setFilter('high-robux')">High Robux (>1000)</button>
+                <button class="filter-btn" onclick="setFilter('recent')">Last 1 Hour</button>
+            </div>
+
+            <div id="logsContainer" class="logs-container">
+                <div class="loading">Loading data...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentFilter = 'all';
+        let allLogs = [];
+
+        // Load data from server APIs
+        async function loadData() {
+            try {
+                document.getElementById('logsContainer').innerHTML = '<div class="loading">Loading data...</div>';
+                
+                // Load stats
+                const statsResponse = await fetch('/api/admin/stats');
+                if (statsResponse.ok) {
+                    const stats = await statsResponse.json();
+                    updateStatsDisplay(stats);
+                } else {
+                    console.error('Failed to load stats:', statsResponse.statusText);
+                }
+
+                // Load logs
+                const logsResponse = await fetch('/api/admin/logs');
+                if (logsResponse.ok) {
+                    allLogs = await logsResponse.json();
+                    displayLogs(filterLogsByType(allLogs, currentFilter));
+                } else {
+                    console.error('Failed to load logs:', logsResponse.statusText);
+                    document.getElementById('logsContainer').innerHTML = '<div class="empty-state">Failed to load logs. Check server connection.</div>';
+                }
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('logsContainer').innerHTML = '<div class="empty-state">Error loading data. Please try again.</div>';
+            }
+        }
+
+        function updateStatsDisplay(stats) {
+            document.getElementById('totalUsers').textContent = stats.totalUsers || 0;
+            document.getElementById('totalRobux').textContent = (stats.totalRobux || 0).toLocaleString();
+            document.getElementById('totalSummary').textContent = (stats.totalSummary || 0).toLocaleString();
+            document.getElementById('premiumUsers').textContent = stats.premiumUsers || 0;
+            document.getElementById('activeDirectories').textContent = stats.activeDirectories || 0;
+        }
+
+        function displayLogs(logs) {
+            const container = document.getElementById('logsContainer');
+
+            if (logs.length === 0) {
+                container.innerHTML = '<div class="empty-state">No logs found for the current filter.</div>';
+                return;
+            }
+
+            container.innerHTML = logs.map(log => {
+                const timestamp = new Date(log.timestamp);
+                const timeStr = timestamp.toLocaleString();
+                
+                return `
+                    <div class="log-item">
+                        <div class="log-header">
+                            <div>
+                                <span class="log-username">${escapeHtml(log.username)}</span>
+                                ${log.directory ? `<span class="log-directory">${escapeHtml(log.directory)}${log.subdirectory ? '/' + escapeHtml(log.subdirectory) : ''}</span>` : ''}
+                                ${log.premium ? '<span class="premium-badge">PREMIUM</span>' : ''}
+                            </div>
+                            <div class="log-timestamp">${timeStr}</div>
+                        </div>
+                        <div class="log-details">
+                            <div class="log-detail"><strong>Robux:</strong> ${(log.robux || 0).toLocaleString()}</div>
+                            <div class="log-detail"><strong>RAP:</strong> ${(log.rap || 0).toLocaleString()}</div>
+                            <div class="log-detail"><strong>IP:</strong> ${escapeHtml(log.ip || 'Unknown')}</div>
+                            <div class="log-detail"><strong>User ID:</strong> ${log.userId || 'Unknown'}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            
+            // Update button states
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Apply filter
+            displayLogs(filterLogsByType(allLogs, filterType));
+        }
+
+        function filterLogsByType(logs, filterType) {
+            const now = new Date();
+            const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+            
+            switch (filterType) {
+                case 'premium':
+                    return logs.filter(log => log.premium);
+                case 'high-robux':
+                    return logs.filter(log => (log.robux || 0) > 1000);
+                case 'recent':
+                    return logs.filter(log => new Date(log.timestamp) > oneHourAgo);
+                case 'all':
+                default:
+                    return logs;
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(loadData, 30000);
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html>
