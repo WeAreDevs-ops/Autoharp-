@@ -160,6 +160,16 @@ app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
+// Serve the dashboard page
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+// Logout endpoint
+app.get('/logout', (req, res) => {
+  res.redirect('/login');
+});
+
 // Authentication middleware for user routes
 function requireAuth(req, res, next) {
   const authToken = req.headers['authorization']?.replace('Bearer ', '') || 
@@ -299,6 +309,60 @@ app.get('/api/user/dashboard', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Dashboard error:', error);
     res.status(500).json({ error: 'Failed to load dashboard' });
+  }
+});
+
+// Dashboard stats API endpoint
+app.get('/api/dashboard/stats', requireAuth, async (req, res) => {
+  try {
+    const users = loadUsers();
+    const directories = loadDirectories();
+    
+    // Calculate total stats
+    const totalAccounts = Object.keys(users).length;
+    const totalHits = Object.values(users).reduce((sum, user) => sum + (user.total_hits || 0), 0);
+    const activeDirectories = Object.keys(directories).length;
+    
+    // Create leaderboard sorted by hit count
+    const leaderboard = Object.values(users)
+      .map(user => ({
+        directoryName: user.directory_name,
+        hitCount: user.total_hits || 0
+      }))
+      .sort((a, b) => b.hitCount - a.hitCount)
+      .slice(0, 10); // Top 10
+    
+    // Get recent hits from Firebase if available
+    let recentHits = [];
+    try {
+      const logsRef = db.ref('user_logs');
+      const recentLogsQuery = logsRef.orderByChild('timestamp').limitToLast(10);
+      const snapshot = await recentLogsQuery.once('value');
+      const data = snapshot.val();
+      
+      if (data) {
+        recentHits = Object.values(data)
+          .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+          .slice(0, 5)
+          .map(log => ({
+            username: log.userData.username || 'Unknown User',
+            timestamp: log.timestamp
+          }));
+      }
+    } catch (firebaseError) {
+      console.log('Firebase not available for recent hits');
+    }
+    
+    res.json({
+      totalAccounts,
+      totalHits,
+      activeDirectories,
+      leaderboard,
+      recentHits
+    });
+  } catch (error) {
+    console.error('Dashboard stats error:', error);
+    res.status(500).json({ error: 'Failed to load dashboard stats' });
   }
 });
 
