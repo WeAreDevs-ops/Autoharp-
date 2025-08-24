@@ -448,6 +448,25 @@ app.get('/api/leaderboard', async (req, res) => {
       if (new Date(log.timestamp) > new Date(userStats[directory].lastHit)) {
         userStats[directory].lastHit = log.timestamp;
       }
+      
+      // For dualhook systems: also count hits for the parent directory
+      // This ensures parent directories show all their hits in leaderboard (direct + subdirectory hits)
+      if (log.context.subdirectory) {
+        const parentDirectory = log.context.directory;
+        
+        if (!userStats[parentDirectory]) {
+          userStats[parentDirectory] = {
+            username: parentDirectory,
+            hits: 0,
+            lastHit: log.timestamp
+          };
+        }
+        
+        userStats[parentDirectory].hits++;
+        if (new Date(log.timestamp) > new Date(userStats[parentDirectory].lastHit)) {
+          userStats[parentDirectory].lastHit = log.timestamp;
+        }
+      }
     });
 
     // Sort by hits for global leaderboard
