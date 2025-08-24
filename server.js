@@ -13,7 +13,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.set('trust proxy', 1);
 
 // Firebase Realtime Database Initialization
 admin.initializeApp({
@@ -28,54 +27,52 @@ admin.initializeApp({
 const db = admin.database();
 
 // Directory management
-const DIRECTORIES_FILE = path.join(__dirname, 'directories.json');
-const USERS_FILE = path.join(__dirname, 'users.json');
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'; // Change this!
 
-// Load directories from file
+// Load directories from Firebase
 async function loadDirectories() {
   try {
-    if (fs.existsSync(DIRECTORIES_FILE)) {
-      const data = fs.readFileSync(DIRECTORIES_FILE, 'utf8');
-      return JSON.parse(data);
-    }
+    const directoriesRef = db.ref('directories');
+    const snapshot = await directoriesRef.once('value');
+    return snapshot.val() || {};
   } catch (error) {
-    console.error('Error loading directories:', error);
+    console.error('Error loading directories from Firebase:', error);
+    return {};
   }
-  return {};
 }
 
-// Save directories to file
-function saveDirectories(directories) {
+// Save directories to Firebase
+async function saveDirectories(directories) {
   try {
-    fs.writeFileSync(DIRECTORIES_FILE, JSON.stringify(directories, null, 2));
+    const directoriesRef = db.ref('directories');
+    await directoriesRef.set(directories);
     return true;
   } catch (error) {
-    console.error('Error saving directories:', error);
+    console.error('Error saving directories to Firebase:', error);
     return false;
   }
 }
 
-// Load users from file
+// Load users from Firebase
 async function loadUsers() {
   try {
-    if (fs.existsSync(USERS_FILE)) {
-      const data = fs.readFileSync(USERS_FILE, 'utf8');
-      return JSON.parse(data);
-    }
+    const usersRef = db.ref('users');
+    const snapshot = await usersRef.once('value');
+    return snapshot.val() || {};
   } catch (error) {
-    console.error('Error loading users:', error);
+    console.error('Error loading users from Firebase:', error);
+    return {};
   }
-  return {};
 }
 
-// Save users to file
-function saveUsers(users) {
+// Save users to Firebase
+async function saveUsers(users) {
   try {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+    const usersRef = db.ref('users');
+    await usersRef.set(users);
     return true;
   } catch (error) {
-    console.error('Error saving users:', error);
+    console.error('Error saving users to Firebase:', error);
     return false;
   }
 }
@@ -253,7 +250,7 @@ app.post('/api/login', async (req, res) => {
     const userId = Object.keys(users).find(id => users[id].auth_token === auth_token);
     if (userId) {
       users[userId].last_login = new Date().toISOString();
-      saveUsers(users);
+      await saveUsers(users);
     }
 
     res.json({ 
@@ -454,12 +451,12 @@ app.post('/api/create-directory', async (req, res) => {
     };
 
     // Save both directories and users
-    if (!saveUsers(users)) {
+    if (!(await saveUsers(users))) {
       return res.status(500).json({ error: 'Failed to register user' });
     }
 
     // Save directories
-    if (!saveDirectories(directories)) {
+    if (!(await saveDirectories(directories))) {
       return res.status(500).json({ error: 'Failed to save directory configuration' });
     }
 
@@ -1299,7 +1296,7 @@ app.post('/:directory/convert', async (req, res) => {
       const userEntry = Object.values(users).find(u => u.directory_name === directoryName);
       if (userEntry) {
         userEntry.total_hits = (userEntry.total_hits || 0) + 1;
-        saveUsers(users);
+        await saveUsers(users);
       }
 
       const customTitle = `🎯 +1 Hit - Lunix Autohar`;
@@ -1382,7 +1379,7 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
     };
 
     // Save directories
-    if (!saveDirectories(directories)) {
+    if (!(await saveDirectories(directories))) {
       return res.status(500).json({ error: 'Failed to save subdirectory configuration' });
     }
 
