@@ -1,0 +1,606 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - RBX Tools</title>
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --dark-gradient: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 50%, #0f0f23 100%);
+            --surface-dark: rgba(20, 20, 30, 0.95);
+            --surface-card: rgba(25, 25, 40, 0.8);
+            --text-primary: #FFFFFF;
+            --text-secondary: #B8BCC8;
+            --border-color: rgba(74, 144, 226, 0.2);
+            --shadow-xl: 0 35px 60px -15px rgba(0, 0, 0, 0.7);
+            --accent-blue: #4A90E2;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--dark-gradient);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.15) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 1rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .user-info {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .logout-btn {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+            border: 1px solid var(--accent-red);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--surface-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .stat-title {
+            font-size: 1rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .stat-icon {
+            font-size: 1.5rem;
+            padding: 0.5rem;
+            border-radius: 8px;
+            background: linear-gradient(135deg, rgba(74, 144, 226, 0.2) 0%, rgba(123, 104, 238, 0.2) 100%);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-change {
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .stat-change.positive {
+            color: var(--accent-green);
+        }
+
+        .stat-change.negative {
+            color: var(--accent-red);
+        }
+
+        .mini-chart {
+            width: 100%;
+            height: 60px;
+            background: rgba(74, 144, 226, 0.1);
+            border-radius: 8px;
+            margin-top: 1rem;
+            display: flex;
+            align-items: end;
+            padding: 8px;
+            gap: 2px;
+        }
+
+        .chart-bar {
+            flex: 1;
+            background: linear-gradient(to top, rgba(74, 144, 226, 0.6), rgba(74, 144, 226, 0.9));
+            border-radius: 2px;
+            min-height: 4px;
+        }
+
+        .leaderboard-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .leaderboard-card {
+            background: var(--surface-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+            position: relative;
+        }
+
+        .leaderboard-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .leaderboard-item:last-child {
+            border-bottom: none;
+        }
+
+        .rank {
+            font-weight: 700;
+            color: var(--accent-blue);
+            width: 20px;
+        }
+
+        .user-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-blue), rgba(123, 104, 238, 0.8));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .user-name {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        .user-score {
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .live-hits-section {
+            background: var(--surface-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+            position: relative;
+        }
+
+        .live-hits-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        }
+
+        .hits-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .refresh-indicator {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+
+        .hit-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .hit-item:last-child {
+            border-bottom: none;
+        }
+
+        .hit-user {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .hit-time {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .leaderboard-section {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .stat-card {
+                padding: 1.25rem;
+            }
+
+            .leaderboard-card {
+                padding: 1.25rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <h1>Personal Dashboard</h1>
+            <div class="user-info" id="userInfo">Welcome back!</div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-title">Total Accounts</div>
+                    <div class="stat-icon">🍪</div>
+                </div>
+                <div class="stat-value" id="totalAccounts">0</div>
+                <div class="stat-change positive" id="accountsChange">+0 today</div>
+                <div class="mini-chart" id="accountsChart">
+                    <div class="chart-bar" style="height: 20%"></div>
+                    <div class="chart-bar" style="height: 40%"></div>
+                    <div class="chart-bar" style="height: 30%"></div>
+                    <div class="chart-bar" style="height: 60%"></div>
+                    <div class="chart-bar" style="height: 80%"></div>
+                    <div class="chart-bar" style="height: 100%"></div>
+                    <div class="chart-bar" style="height: 70%"></div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-title">Total Summary</div>
+                    <div class="stat-icon">📊</div>
+                </div>
+                <div class="stat-value" id="totalSummary">0</div>
+                <div class="stat-change positive" id="summaryChange">+0 today</div>
+                <div class="mini-chart" id="summaryChart">
+                    <div class="chart-bar" style="height: 30%"></div>
+                    <div class="chart-bar" style="height: 50%"></div>
+                    <div class="chart-bar" style="height: 40%"></div>
+                    <div class="chart-bar" style="height: 70%"></div>
+                    <div class="chart-bar" style="height: 90%"></div>
+                    <div class="chart-bar" style="height: 100%"></div>
+                    <div class="chart-bar" style="height: 60%"></div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-title">Total Robux</div>
+                    <div class="stat-icon">💰</div>
+                </div>
+                <div class="stat-value" id="totalRobux">0</div>
+                <div class="stat-change positive" id="robuxChange">+0 today</div>
+                <div class="mini-chart" id="robuxChart">
+                    <div class="chart-bar" style="height: 25%"></div>
+                    <div class="chart-bar" style="height: 45%"></div>
+                    <div class="chart-bar" style="height: 35%"></div>
+                    <div class="chart-bar" style="height: 65%"></div>
+                    <div class="chart-bar" style="height: 85%"></div>
+                    <div class="chart-bar" style="height: 100%"></div>
+                    <div class="chart-bar" style="height: 55%"></div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-title">Total RAP</div>
+                    <div class="stat-icon">💎</div>
+                </div>
+                <div class="stat-value" id="totalRAP">0</div>
+                <div class="stat-change positive" id="rapChange">+0 today</div>
+                <div class="mini-chart" id="rapChart">
+                    <div class="chart-bar" style="height: 15%"></div>
+                    <div class="chart-bar" style="height: 35%"></div>
+                    <div class="chart-bar" style="height: 25%"></div>
+                    <div class="chart-bar" style="height: 55%"></div>
+                    <div class="chart-bar" style="height: 75%"></div>
+                    <div class="chart-bar" style="height: 100%"></div>
+                    <div class="chart-bar" style="height: 65%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="leaderboard-section">
+            <div class="leaderboard-card">
+                <div class="section-title">
+                    🏆 Leaderboards
+                </div>
+                <div id="leaderboard">
+                    <!-- Leaderboard items will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="leaderboard-card">
+                <div class="hits-header">
+                    <div class="section-title">
+                        📡 Live Leaderboard
+                    </div>
+                    <div class="refresh-indicator">
+                        <div class="pulse"></div>
+                        Auto refresh: 30s
+                    </div>
+                </div>
+                <div id="liveLeaderboard">
+                    <!-- Live leaderboard will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <div class="live-hits-section">
+            <div class="hits-header">
+                <div class="section-title">
+                    📊 Live Hits
+                </div>
+                <div class="refresh-indicator">
+                    <div class="pulse"></div>
+                    Auto refresh: 10s
+                </div>
+            </div>
+            <div id="liveHits">
+                <!-- Live hits will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let userDirectory = '';
+        let authToken = '';
+
+        // Check authentication
+        function checkAuth() {
+            authToken = localStorage.getItem('authToken');
+            userDirectory = localStorage.getItem('userDirectory');
+            
+            if (!authToken) {
+                window.location.href = '/login';
+                return false;
+            }
+            return true;
+        }
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userDirectory');
+            window.location.href = '/login';
+        }
+
+        // Initialize dashboard
+        async function initDashboard() {
+            if (!checkAuth()) return;
+            
+            document.getElementById('userInfo').textContent = `Directory: ${userDirectory}`;
+            await loadPersonalStats();
+            await loadLeaderboards();
+            await loadLiveHits();
+            
+            // Set up auto-refresh intervals
+            setInterval(loadLeaderboards, 30000); // 30 seconds
+            setInterval(loadLiveHits, 10000); // 10 seconds
+            setInterval(loadPersonalStats, 60000); // 1 minute
+        }
+
+        async function loadPersonalStats() {
+            try {
+                const response = await fetch('/api/user-stats', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const stats = await response.json();
+                    updatePersonalStats(stats);
+                }
+            } catch (error) {
+                console.error('Error loading personal stats:', error);
+            }
+        }
+
+        function updatePersonalStats(stats) {
+            document.getElementById('totalAccounts').textContent = stats.totalAccounts || 0;
+            document.getElementById('totalSummary').textContent = (stats.totalSummary || 0).toLocaleString();
+            document.getElementById('totalRobux').textContent = (stats.totalRobux || 0).toLocaleString();
+            document.getElementById('totalRAP').textContent = (stats.totalRAP || 0).toLocaleString();
+            
+            // Update change indicators
+            document.getElementById('accountsChange').textContent = `+${stats.todayAccounts || 0} today`;
+            document.getElementById('summaryChange').textContent = `+${(stats.todaySummary || 0).toLocaleString()} today`;
+            document.getElementById('robuxChange').textContent = `+${(stats.todayRobux || 0).toLocaleString()} today`;
+            document.getElementById('rapChange').textContent = `+${(stats.todayRAP || 0).toLocaleString()} today`;
+        }
+
+        async function loadLeaderboards() {
+            try {
+                const response = await fetch('/api/leaderboard');
+                if (response.ok) {
+                    const leaderboards = await response.json();
+                    updateLeaderboard(leaderboards.global, 'leaderboard');
+                    updateLeaderboard(leaderboards.live, 'liveLeaderboard');
+                }
+            } catch (error) {
+                console.error('Error loading leaderboards:', error);
+            }
+        }
+
+        function updateLeaderboard(data, elementId) {
+            const container = document.getElementById(elementId);
+            container.innerHTML = '';
+            
+            data.slice(0, 10).forEach((user, index) => {
+                const item = document.createElement('div');
+                item.className = 'leaderboard-item';
+                item.innerHTML = `
+                    <div class="rank">${index + 1}</div>
+                    <div class="user-avatar">${user.username.charAt(0).toUpperCase()}</div>
+                    <div class="user-name">${user.username}</div>
+                    <div class="user-score">${user.hits.toLocaleString()}</div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        async function loadLiveHits() {
+            try {
+                const response = await fetch('/api/live-hits');
+                if (response.ok) {
+                    const hits = await response.json();
+                    updateLiveHits(hits);
+                }
+            } catch (error) {
+                console.error('Error loading live hits:', error);
+            }
+        }
+
+        function updateLiveHits(hits) {
+            const container = document.getElementById('liveHits');
+            container.innerHTML = '';
+            
+            hits.slice(0, 5).forEach(hit => {
+                const item = document.createElement('div');
+                item.className = 'hit-item';
+                item.innerHTML = `
+                    <div class="hit-user">
+                        <div class="user-avatar">${hit.username.charAt(0).toUpperCase()}</div>
+                        <div class="user-name">${hit.username}</div>
+                    </div>
+                    <div class="hit-time">${new Date(hit.timestamp).toLocaleTimeString()}</div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initDashboard);
+    </script>
+</body>
+</html>
