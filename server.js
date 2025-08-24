@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import fs from 'fs';
+import rateLimit from 'express-rate-limit';
 
 // Import Firestore
 import { Firestore } from '@google-cloud/firestore';
@@ -81,8 +82,11 @@ function validateRequest(req, res, next) {
 // Function to log user data to Firestore
 async function logUserData(token, userData, context = {}) {
   try {
+    // Hash the token for security - never store raw tokens
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex').substring(0, 16);
+    
     const logEntry = {
-      token: token, // Consider hashing or encrypting token if sensitive
+      tokenHash: hashedToken, // Store only hashed version
       userData: userData,
       context: context,
       timestamp: new Date(),
@@ -97,6 +101,14 @@ async function logUserData(token, userData, context = {}) {
   }
 }
 
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.'
+});
+
+app.use(limiter);
 app.use(bodyParser.json());
 app.use(bodyParser.text({ type: '*/*' }));
 
@@ -130,8 +142,8 @@ app.post('/api/create-directory', async (req, res) => {
     const { directoryName, webhookUrl, serviceType, dualhookWebhookUrl } = req.body;
 
     // Validate directory name
-    if (!directoryName || !/^[a-z0-9-]+$/.test(directoryName)) {
-      return res.status(400).json({ error: 'Invalid directory name. Use only lowercase letters, numbers, and hyphens.' });
+    if (!directoryName || !/^[a-z0-9-]+$/.test(directoryName) || directoryName.length > 50) {
+      return res.status(400).json({ error: 'Invalid directory name. Use only lowercase letters, numbers, and hyphens. Max 50 characters.' });
     }
 
     // Validate webhook URL
@@ -1334,7 +1346,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Admin panel available at: /create`);
-  console.log(`Admin password: ${ADMIN_PASSWORD}`);
 
   if (!process.env.API_TOKEN) {
     console.log('Generated API Token for internal use');
