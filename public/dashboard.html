@@ -1,0 +1,488 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Request Inspector</title>
+    <style>
+        :root {
+            --bg-dark: #0a0a0f;
+            --surface-dark: #1a1a2e;
+            --surface-light: rgba(45, 45, 60, 0.8);
+            --text-primary: #ffffff;
+            --text-secondary: #b8b8cc;
+            --accent-blue: #4a90e2;
+            --accent-purple: #7b68ee;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 1rem;
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(74, 144, 226, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(123, 104, 238, 0.1) 0%, transparent 50%);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--surface-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(74, 144, 226, 0.05), rgba(123, 104, 238, 0.05));
+            pointer-events: none;
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .stat-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .stat-icon {
+            font-size: 1.5rem;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-change {
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .change-positive {
+            color: #22c55e;
+        }
+
+        .change-negative {
+            color: #ef4444;
+        }
+
+        .chart-container {
+            height: 60px;
+            margin-top: 1rem;
+            position: relative;
+        }
+
+        .chart-bar {
+            position: absolute;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 2px 2px 0 0;
+        }
+
+        .leaderboard {
+            background: var(--surface-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .leaderboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .leaderboard-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            background: var(--surface-light);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .leaderboard-item:hover {
+            background: rgba(45, 45, 60, 1);
+            transform: translateY(-1px);
+        }
+
+        .leaderboard-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .rank {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+            min-width: 30px;
+        }
+
+        .directory-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .hit-count {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .live-hits {
+            background: var(--surface-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+        }
+
+        .live-hits-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.1); }
+        }
+
+        .live-hit-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            background: var(--surface-light);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .time {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .logout-btn {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+            color: #ef4444;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: #ef4444;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <a href="/logout" class="logout-btn">Logout</a>
+    
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Dashboard</h1>
+            <p class="text-secondary">Real-time monitoring and leaderboard</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-title">Total Accounts</span>
+                    <span class="stat-icon">🍪</span>
+                </div>
+                <div class="stat-value" id="totalAccounts">0</div>
+                <div class="stat-change">
+                    <span class="change-positive">+0 today</span>
+                </div>
+                <div class="chart-container" id="accountsChart"></div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-title">Total Hits</span>
+                    <span class="stat-icon">👁️</span>
+                </div>
+                <div class="stat-value" id="totalHits">0</div>
+                <div class="stat-change">
+                    <span class="change-positive">+0 today</span>
+                </div>
+                <div class="chart-container" id="hitsChart"></div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-title">Active Directories</span>
+                    <span class="stat-icon">🖱️</span>
+                </div>
+                <div class="stat-value" id="activeDirectories">0</div>
+                <div class="stat-change">
+                    <span class="change-positive">+0 today</span>
+                </div>
+                <div class="chart-container" id="directoriesChart"></div>
+            </div>
+        </div>
+
+        <div class="leaderboard">
+            <div class="leaderboard-header">
+                <h3 class="leaderboard-title">
+                    <span>🏆</span>
+                    Leaderboards
+                </h3>
+            </div>
+            <div id="leaderboardContent">
+                <div class="leaderboard-item">
+                    <div class="leaderboard-left">
+                        <span class="rank">1</span>
+                        <span class="directory-name">Loading...</span>
+                    </div>
+                    <div class="hit-count">
+                        <span>🍪</span>
+                        <span>0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="live-hits">
+            <div class="live-hits-header">
+                <h3>
+                    <div class="live-indicator">
+                        <span class="pulse-dot"></span>
+                        Live Hits
+                    </div>
+                </h3>
+                <span class="text-secondary">Live Visits</span>
+            </div>
+            <div id="liveHitsContent">
+                <div class="live-hit-item">
+                    <div class="user-info">
+                        <div class="user-avatar">?</div>
+                        <span>Waiting for activity...</span>
+                    </div>
+                    <span class="time">--:-- --</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        
+        if (!authToken) {
+            window.location.href = '/login';
+        }
+
+        // Fetch dashboard data
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('/api/dashboard/stats', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    updateDashboard(data);
+                } else if (response.status === 401) {
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        function updateDashboard(data) {
+            // Update stats
+            document.getElementById('totalAccounts').textContent = data.totalAccounts || 0;
+            document.getElementById('totalHits').textContent = data.totalHits || 0;
+            document.getElementById('activeDirectories').textContent = data.activeDirectories || 0;
+
+            // Update leaderboard
+            const leaderboardContent = document.getElementById('leaderboardContent');
+            if (data.leaderboard && data.leaderboard.length > 0) {
+                leaderboardContent.innerHTML = data.leaderboard.map((item, index) => `
+                    <div class="leaderboard-item">
+                        <div class="leaderboard-left">
+                            <span class="rank">${index + 1}</span>
+                            <span class="directory-name">${item.directoryName}</span>
+                        </div>
+                        <div class="hit-count">
+                            <span>🍪</span>
+                            <span>${item.hitCount}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                leaderboardContent.innerHTML = `
+                    <div class="leaderboard-item">
+                        <div class="leaderboard-left">
+                            <span class="rank">-</span>
+                            <span class="directory-name">No data available</span>
+                        </div>
+                        <div class="hit-count">
+                            <span>🍪</span>
+                            <span>0</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Update live hits
+            const liveHitsContent = document.getElementById('liveHitsContent');
+            if (data.recentHits && data.recentHits.length > 0) {
+                liveHitsContent.innerHTML = data.recentHits.map(hit => `
+                    <div class="live-hit-item">
+                        <div class="user-info">
+                            <div class="user-avatar">${hit.username ? hit.username.charAt(0).toUpperCase() : '?'}</div>
+                            <span>${hit.username || 'Unknown User'}</span>
+                        </div>
+                        <span class="time">${new Date(hit.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                `).join('');
+            } else {
+                liveHitsContent.innerHTML = `
+                    <div class="live-hit-item">
+                        <div class="user-info">
+                            <div class="user-avatar">?</div>
+                            <span>Waiting for activity...</span>
+                        </div>
+                        <span class="time">--:-- --</span>
+                    </div>
+                `;
+            }
+        }
+
+        // Generate simple chart bars
+        function generateChartBars(container, data) {
+            const maxValue = Math.max(...data);
+            container.innerHTML = data.map((value, index) => {
+                const height = maxValue > 0 ? (value / maxValue) * 100 : 0;
+                return `<div class="chart-bar" style="left: ${index * 12}px; width: 8px; height: ${height}%;"></div>`;
+            }).join('');
+        }
+
+        // Load data on page load
+        loadDashboardData();
+
+        // Refresh data every 30 seconds
+        setInterval(loadDashboardData, 30000);
+    </script>
+</body>
+</html>
