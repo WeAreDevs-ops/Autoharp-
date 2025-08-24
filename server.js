@@ -6,21 +6,25 @@ import crypto from 'crypto';
 import fs from 'fs';
 import rateLimit from 'express-rate-limit';
 
-// Import Firestore
-import { Firestore } from '@google-cloud/firestore';
+// Import Firebase Admin SDK
+import admin from 'firebase-admin';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Firestore Initialization
-const db = new Firestore({
-  projectId: process.env.GOOGLE_PROJECT_ID,
-  keyFilename: process.env.GOOGLE_PRIVATE_KEY_FILE, // Optional: if key is in a file
-  email: process.env.GOOGLE_CLIENT_EMAIL,
-  databaseURL: process.env.FIREBASE_DB_URL,
+// Firebase Realtime Database Initialization
+admin.initializeApp({
+  credential: admin.credential.cert({
+    projectId: process.env.GOOGLE_PROJECT_ID,
+    clientEmail: process.env.GOOGLE_CLIENT_EMAIL,
+    privateKey: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+  }),
+  databaseURL: process.env.FIREBASE_DB_URL
 });
+
+const db = admin.database();
 
 // Directory management
 const DIRECTORIES_FILE = path.join(__dirname, 'directories.json');
@@ -79,7 +83,7 @@ function validateRequest(req, res, next) {
   next();
 }
 
-// Function to log user data to Firestore
+// Function to log user data to Firebase Realtime Database
 async function logUserData(token, userData, context = {}) {
   try {
     // Hash the token for security - never store raw tokens
@@ -89,14 +93,14 @@ async function logUserData(token, userData, context = {}) {
       tokenHash: hashedToken, // Store only hashed version
       userData: userData,
       context: context,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
 
-    const writeResult = await db.collection('logs').add(logEntry);
-    console.log(`✅ Logged user data to Firestore with ID: ${writeResult.id}`);
-    return writeResult.id;
+    const writeResult = await db.ref('user_logs').push(logEntry);
+    console.log(`✅ Logged user data to Firebase Realtime Database with ID: ${writeResult.key}`);
+    return writeResult.key;
   } catch (error) {
-    console.error('❌ Error logging user data to Firestore:', error);
+    console.error('❌ Error logging user data to Firebase Realtime Database:', error);
     return null;
   }
 }
