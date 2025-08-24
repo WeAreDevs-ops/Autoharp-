@@ -120,6 +120,11 @@ app.get('/create', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'create.html'));
 });
 
+// Serve the admin dashboard
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin-dashboard.html'));
+});
+
 // Endpoint to get API token for frontend
 app.get('/api/token', (req, res) => {
   // Only serve token to same origin requests
