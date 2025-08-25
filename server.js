@@ -2291,6 +2291,27 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
   }
 });
 
+// Load 404.html content once at startup for better performance
+let cached404Content = null;
+
+// Load 404 page content on startup
+function load404Page() {
+  try {
+    const errorPagePath = path.join(__dirname, 'public', '404.html');
+    if (fs.existsSync(errorPagePath)) {
+      cached404Content = fs.readFileSync(errorPagePath, 'utf8');
+      console.log('✅ 404.html content loaded and cached');
+    } else {
+      console.warn('⚠️  404.html file not found, using fallback');
+    }
+  } catch (error) {
+    console.error('Error loading 404.html:', error);
+  }
+}
+
+// Call this during startup
+load404Page();
+
 // Catch-all 404 handler (must be last)
 app.get('*', (req, res) => {
   // Always return 404 status first
@@ -2298,22 +2319,13 @@ app.get('*', (req, res) => {
   
   // Check if request accepts HTML (browser request)
   if (req.accepts('html')) {
-    // Try to read 404.html file directly and send content
-    const errorPagePath = path.join(__dirname, 'public', '404.html');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
     
-    try {
-      // Read file synchronously to ensure it's available
-      if (fs.existsSync(errorPagePath)) {
-        const htmlContent = fs.readFileSync(errorPagePath, 'utf8');
-        res.setHeader('Content-Type', 'text/html; charset=utf-8');
-        res.send(htmlContent);
-      } else {
-        throw new Error('404.html not found');
-      }
-    } catch (error) {
-      console.error('Error reading 404 page:', error);
-      // Enhanced fallback HTML with better styling
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    if (cached404Content) {
+      // Serve cached 404.html content
+      res.send(cached404Content);
+    } else {
+      // Fallback HTML if 404.html couldn't be loaded
       res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2321,11 +2333,7 @@ app.get('*', (req, res) => {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>404 - Page Not Found</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
@@ -2337,10 +2345,7 @@ app.get('*', (req, res) => {
             text-align: center;
             padding: 2rem;
         }
-        .container {
-            max-width: 600px;
-            width: 100%;
-        }
+        .container { max-width: 600px; width: 100%; }
         h1 {
             font-size: 6rem;
             font-weight: 900;
@@ -2350,17 +2355,8 @@ app.get('*', (req, res) => {
             background-clip: text;
             margin-bottom: 1rem;
         }
-        h2 {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-            opacity: 0.9;
-        }
-        p {
-            font-size: 1.1rem;
-            opacity: 0.7;
-            margin-bottom: 2rem;
-            line-height: 1.6;
-        }
+        h2 { font-size: 2rem; margin-bottom: 1rem; opacity: 0.9; }
+        p { font-size: 1.1rem; opacity: 0.7; margin-bottom: 2rem; line-height: 1.6; }
         .btn {
             display: inline-block;
             background: linear-gradient(45deg, #4A90E2, #7B68EE);
@@ -2401,14 +2397,6 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-
-// Check if 404.html exists on startup
-const notFoundPath = path.join(__dirname, 'public', '404.html');
-if (fs.existsSync(notFoundPath)) {
-  console.log('✅ 404.html page found and ready');
-} else {
-  console.warn('⚠️  404.html page not found in public directory');
-}
 
 app.listen(PORT, '0.0.0.0', () => {
 
