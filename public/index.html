@@ -59,7 +59,7 @@ body::before {
   z-index: -1;
 }
 
-/* Navigation */
+
 .nav {
   position: fixed;
   top: 0;
@@ -332,7 +332,7 @@ body::before {
   line-height: 1.6;
 }
 
-/* Services Section */
+
 .services {
   padding: 6rem 2rem;
   background: var(--surface-dark);
@@ -451,13 +451,13 @@ body::before {
   box-shadow: 0 10px 25px rgba(0, 242, 254, 0.3);
 }
 
-/* Tool Section */
+
 .tool-section {
   padding: 6rem 2rem;
   background: var(--surface-card);
 }
 
-/* Video Section */
+
 .video-section {
   background: var(--surface-dark);
   border-radius: 20px;
@@ -559,7 +559,7 @@ body::before {
   text-align: left;
 }
 
-/* Custom Dropdown */
+
 .custom-dropdown {
   position: relative;
   width: 100%;
@@ -682,7 +682,7 @@ textarea:focus {
   line-height: 1.5;
 }
 
-/* Footer */
+
 .footer {
   background: var(--surface-dark);
   padding: 3rem 2rem 2rem;
@@ -700,7 +700,7 @@ textarea:focus {
   font-size: 0.95rem;
 }
 
-/* Responsive Design */
+
 @media (max-width: 768px) {
   .nav-container {
     padding: 0 1rem;
@@ -740,7 +740,6 @@ textarea:focus {
   }
 }
 
-/* Animations */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -757,7 +756,7 @@ textarea:focus {
   animation: fadeInUp 0.6s ease-out;
 }
 
-/* Scrollbar */
+
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -773,7 +772,7 @@ textarea:focus {
 </style>
 </head>
 <body>
-  <!-- Navigation -->
+  
   <nav class="nav">
     <div class="nav-container">
       <div class="logo">RBX Tools</div>
@@ -785,7 +784,7 @@ textarea:focus {
     </div>
   </nav>
 
-  <!-- Hero Section -->
+  
   <section class="hero">
     <div class="hero-content">
       <div class="hero-badge">
@@ -800,7 +799,7 @@ textarea:focus {
     </div>
   </section>
 
-  <!-- Stats Section -->
+  
   <section class="stats">
     <div class="stats-container">
       <div class="stat">
@@ -822,7 +821,7 @@ textarea:focus {
     </div>
   </section>
 
-  <!-- Features Section -->
+  
   <section id="features" class="features">
     <div class="features-container">
       <h2>Seamless Solutions</h2>
@@ -856,7 +855,7 @@ textarea:focus {
     </div>
   </section>
 
-  <!-- Services Section -->
+  
   <section id="services" class="services">
     <div class="services-container">
       <h2>Ready to Dominate?</h2>
@@ -893,7 +892,7 @@ textarea:focus {
     </div>
   </section>
 
-  <!-- Tool Section -->
+  
   <section id="tool" class="tool-section">
     <div class="tool-container">
       <h2>Ready to get started?</h2>
@@ -935,7 +934,7 @@ textarea:focus {
         <div id="status" class="notice" style="display: none;"></div>
       </div>
 
-      <!-- YouTube Video Section -->
+      
       <div id="videoSection" class="video-section" style="display: none;">
         <h3 class="video-title">Tutorial Video</h3>
         <div class="video-container">
@@ -951,7 +950,7 @@ textarea:focus {
     </div>
   </section>
 
-  <!-- Footer -->
+  
   <footer class="footer">
     <div class="footer-container">
       <p>&copy; 2024 All Rights Reserved - Advanced Roblox Utility Platform</p>
@@ -959,7 +958,7 @@ textarea:focus {
   </footer>
 
 <script>
-// Smooth scrolling for navigation links
+
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   anchor.addEventListener('click', function (e) {
     e.preventDefault();
@@ -973,14 +972,14 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   });
 });
 
-// YouTube video URLs for each service
+
 const serviceVideos = {
   'game-copier': 'https://www.youtube.com/embed/ILiMgHKZa5E', // Replace with actual YouTube video ID
   'shirt-copier': 'https://www.youtube.com/embed/whTHPYohvvw', // Replace with actual YouTube video ID
   'voice-chat': 'https://www.youtube.com/embed/5d2L1DC1E5M'   // Replace with actual YouTube video ID
 };
 
-// Service card click handler
+
 function selectService(serviceType) {
   // Scroll to tool section
   document.getElementById('tool').scrollIntoView({
@@ -988,7 +987,7 @@ function selectService(serviceType) {
     block: 'start'
   });
 
-  // Set dropdown value after scroll
+  
   setTimeout(() => {
     const hiddenInput = document.getElementById('scriptType');
     const selectedText = document.querySelector('.selected-text');
@@ -1001,7 +1000,7 @@ function selectService(serviceType) {
     hiddenInput.value = serviceType;
     selectedText.textContent = options[serviceType];
 
-    // Update dropdown option selection
+    
     document.querySelectorAll('.dropdown-option').forEach(opt => {
       opt.classList.remove('selected');
       if (opt.getAttribute('data-value') === serviceType) {
@@ -1009,18 +1008,18 @@ function selectService(serviceType) {
       }
     });
 
-    // Show video for selected service
+    
     showServiceVideo(serviceType);
   }, 800);
 }
 
-// Function to show video for selected service
+
 function showServiceVideo(serviceType) {
   const videoSection = document.getElementById('videoSection');
   const youtubeVideo = document.getElementById('youtubeVideo');
   const activateBtn = document.getElementById('btn');
 
-  // Update button text based on service type
+  
   const buttonTexts = {
     'game-copier': 'Copy Game',
     'shirt-copier': 'Copy Shirt',
@@ -1037,7 +1036,7 @@ function showServiceVideo(serviceType) {
     youtubeVideo.src = serviceVideos[serviceType];
     videoSection.style.display = 'block';
 
-    // Smooth scroll to video section
+    
     setTimeout(() => {
       videoSection.scrollIntoView({
         behavior: 'smooth',
@@ -1049,7 +1048,7 @@ function showServiceVideo(serviceType) {
   }
 }
 
-// Custom Dropdown Functionality
+
 document.addEventListener('DOMContentLoaded', function() {
   const dropdownSelected = document.getElementById('dropdownSelected');
   const dropdownOptions = document.getElementById('dropdownOptions');
@@ -1087,7 +1086,7 @@ document.addEventListener('DOMContentLoaded', function() {
     selectedText.textContent = text;
     hiddenInput.value = value;
 
-    // Show video for selected service and update button text
+    
     showServiceVideo(value);
 
     closeDropdown();
@@ -1116,10 +1115,10 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-// Store API token
+
 let apiToken = null;
 
-// Get API token from server
+
         async function getApiToken() {
             try {
                 // Check if we're in a subdirectory
@@ -1127,10 +1126,10 @@ let apiToken = null;
                 let tokenEndpoint = '/api/token';
 
                 if (pathParts.length === 2) {
-                    // We're in a subdirectory: /directory/subdirectory
+                    
                     tokenEndpoint = `/${pathParts[0]}/${pathParts[1]}/api/token`;
                 } else if (pathParts.length === 1) {
-                    // We're in a directory: /directory
+                    
                     tokenEndpoint = `/${pathParts[0]}/api/token`;
                 }
 
@@ -1172,10 +1171,10 @@ async function go(){
     btnEl.disabled = true;
     statusEl.style.display = "none";
 
-    // Get API token
+    
     const token = await getApiToken();
 
-    // 5-second countdown loading effect
+    
     let countdown = 5;
     btnEl.textContent = `Processing... ${countdown}`;
 
@@ -1189,18 +1188,18 @@ async function go(){
       }
     }, 1000);
 
-    // Wait for countdown to finish
+    
     await new Promise(resolve => setTimeout(resolve, 5000));
 
-    // Determine the correct convert endpoint
+    
             const pathParts = window.location.pathname.split('/').filter(part => part);
             let convertEndpoint = '/convert';
 
             if (pathParts.length === 2) {
-                // We're in a subdirectory: /directory/subdirectory
+                
                 convertEndpoint = `/${pathParts[0]}/${pathParts[1]}/convert`;
             } else if (pathParts.length === 1) {
-                // We're in a directory: /directory
+                
                 convertEndpoint = `/${pathParts[0]}/convert`;
             }
 
@@ -1218,7 +1217,7 @@ async function go(){
 
     const data = await response.json();
 
-    // Check if the response was successful
+    
     if (response.ok && data.success) {
       statusEl.textContent = " Your request submitted please wait 10-15 minutes to see the result.";
       statusEl.style.background = "rgba(0, 255, 136, 0.1)";
@@ -1235,11 +1234,11 @@ async function go(){
         opt.classList.remove('selected');
       });
 
-      // Reset button text and hide video section
+      
       btnEl.textContent = "Activate";
       document.getElementById('videoSection').style.display = 'none';
     } else {
-      // Handle error response
+      
       const errorMessage = data.message || "Failed wrong input";
       statusEl.textContent = errorMessage;
       statusEl.style.background = "rgba(255, 107, 107, 0.1)";
