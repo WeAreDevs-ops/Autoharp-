@@ -2287,6 +2287,17 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
   }
 });
 
+// Catch-all 404 handler (must be last)
+app.get('*', (req, res) => {
+  // Check if request accepts HTML (browser request)
+  if (req.accepts('html')) {
+    res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+  } else {
+    // For API requests, return JSON
+    res.status(404).json({ error: 'Not found' });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
 
