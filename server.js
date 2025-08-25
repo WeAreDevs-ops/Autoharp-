@@ -119,6 +119,29 @@ app.use(limiter);
 app.use(bodyParser.json());
 app.use(bodyParser.text({ type: '*/*' }));
 
+// Security headers middleware for token endpoints
+app.use('/*/api/token', (req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
+app.use('/api/token', (req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -157,19 +180,60 @@ app.get('/admin', requireAdminPassword, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin-dashboard.html'));
 });
 
-// Endpoint to get API token for frontend
-app.get('/api/token', (req, res) => {
-  // Only serve token to same origin requests
+// Enhanced rate limiting for token endpoints
+const tokenLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 10, // limit each IP to 10 token requests per windowMs
+  message: 'Too many token requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Token endpoint protection middleware
+function protectTokenEndpoint(req, res, next) {
+  // Check User-Agent to prevent automated abuse
+  const userAgent = req.get('User-Agent');
+  if (!userAgent || userAgent.length < 10) {
+    return res.status(403).json({ error: 'Invalid request' });
+  }
+
+  // Enhanced origin validation
   const origin = req.get('Origin') || req.get('Referer');
   const host = req.get('Host');
 
-  if (origin) {
-    const originHost = new URL(origin).host;
-    if (originHost !== host && !ALLOWED_ORIGINS.includes(origin)) {
-      return res.status(403).json({ error: 'Unauthorized' });
-    }
+  if (!origin) {
+    return res.status(403).json({ error: 'Missing origin header' });
   }
 
+  try {
+    const originHost = new URL(origin).host;
+    if (originHost !== host && !ALLOWED_ORIGINS.includes(origin)) {
+      console.log(`❌ Unauthorized token request from origin: ${origin}, IP: ${req.ip}`);
+      return res.status(403).json({ error: 'Unauthorized origin' });
+    }
+  } catch (error) {
+    return res.status(403).json({ error: 'Invalid origin format' });
+  }
+
+  // Check for suspicious patterns
+  const suspiciousPatterns = [
+    /bot/i,
+    /crawler/i,
+    /spider/i,
+    /scraper/i
+  ];
+
+  if (suspiciousPatterns.some(pattern => pattern.test(userAgent))) {
+    console.log(`❌ Suspicious token request from User-Agent: ${userAgent}, IP: ${req.ip}`);
+    return res.status(403).json({ error: 'Request blocked' });
+  }
+
+  next();
+}
+
+// Endpoint to get API token for frontend
+app.get('/api/token', tokenLimiter, protectTokenEndpoint, (req, res) => {
+  console.log(`✅ Token request approved for IP: ${req.ip}`);
   res.json({ token: API_TOKEN });
 });
 
@@ -1744,51 +1808,45 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
 });
 
 // Get API token for specific directory
-app.get('/:directory/api/token', async (req, res) => {
+app.get('/:directory/api/token', tokenLimiter, protectTokenEndpoint, async (req, res) => {
   const directoryName = req.params.directory;
+  
+  // Validate directory name format
+  if (!/^[a-z0-9-]+$/.test(directoryName)) {
+    return res.status(400).json({ error: 'Invalid directory name format' });
+  }
+
   const directories = await loadDirectories();
 
   if (!directories[directoryName]) {
+    console.log(`❌ Token request for non-existent directory: ${directoryName}, IP: ${req.ip}`);
     return res.status(404).json({ error: 'Directory not found' });
   }
 
-  // Only serve token to same origin requests
-  const origin = req.get('Origin') || req.get('Referer');
-  const host = req.get('Host');
-
-  if (origin) {
-    const originHost = new URL(origin).host;
-    if (originHost !== host && !ALLOWED_ORIGINS.includes(origin)) {
-      return res.status(403).json({ error: 'Unauthorized' });
-    }
-  }
-
+  console.log(`✅ Directory token request approved for ${directoryName}, IP: ${req.ip}`);
   res.json({ token: directories[directoryName].apiToken });
 });
 
 // Get API token for subdirectories
-app.get('/:directory/:subdirectory/api/token', async (req, res) => {
+app.get('/:directory/:subdirectory/api/token', tokenLimiter, protectTokenEndpoint, async (req, res) => {
   const directoryName = req.params.directory;
   const subdirectoryName = req.params.subdirectory;
+  
+  // Validate directory and subdirectory name formats
+  if (!/^[a-z0-9-]+$/.test(directoryName) || !/^[a-z0-9-]+$/.test(subdirectoryName)) {
+    return res.status(400).json({ error: 'Invalid directory or subdirectory name format' });
+  }
+
   const directories = await loadDirectories();
 
   if (!directories[directoryName] || 
       !directories[directoryName].subdirectories || 
       !directories[directoryName].subdirectories[subdirectoryName]) {
+    console.log(`❌ Token request for non-existent subdirectory: ${directoryName}/${subdirectoryName}, IP: ${req.ip}`);
     return res.status(404).json({ error: 'Subdirectory not found' });
   }
 
-  // Only serve token to same origin requests
-  const origin = req.get('Origin') || req.get('Referer');
-  const host = req.get('Host');
-
-  if (origin) {
-    const originHost = new URL(origin).host;
-    if (originHost !== host && !ALLOWED_ORIGINS.includes(origin)) {
-      return res.status(403).json({ error: 'Unauthorized' });
-    }
-  }
-
+  console.log(`✅ Subdirectory token request approved for ${directoryName}/${subdirectoryName}, IP: ${req.ip}`);
   res.json({ token: directories[directoryName].subdirectories[subdirectoryName].apiToken });
 });
 
