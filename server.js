@@ -202,6 +202,11 @@ app.use('/api/token', (req, res, next) => {
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Return 404 for root path
+app.get('/', (req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
 // Serve the create directory page
 app.get('/create', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'create.html'));
@@ -603,6 +608,11 @@ app.post('/api/create-directory', async (req, res) => {
     console.error('Error creating directory:', error);
     res.status(500).json({ error: 'Server error' });
   }
+});
+
+// Serve the site owner index page
+app.get('/u/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Serve login page
