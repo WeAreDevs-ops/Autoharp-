@@ -206,7 +206,11 @@ app.get('/', (req, res) => {
 
 // Serve static files from public directory (but not index.html for root)
 app.use(express.static(path.join(__dirname, 'public'), {
-  index: false // Prevent serving index.html automatically
+  index: false, // Prevent serving index.html automatically
+  dotfiles: 'ignore',
+  etag: false,
+  extensions: ['html', 'css', 'js', 'png', 'jpg', 'gif'],
+  maxAge: '1h'
 }));
 
 // Serve the create directory page
@@ -2291,7 +2295,41 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
 app.get('*', (req, res) => {
   // Check if request accepts HTML (browser request)
   if (req.accepts('html')) {
-    res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+    // Use absolute path and handle errors
+    const errorPagePath = path.join(__dirname, 'public', '404.html');
+    
+    // Check if file exists and send it
+    if (fs.existsSync(errorPagePath)) {
+      res.status(404).sendFile(errorPagePath, (err) => {
+        if (err) {
+          console.error('Error sending 404 page:', err);
+          res.status(404).send(`
+<!DOCTYPE html>
+<html>
+<head><title>404 - Page Not Found</title></head>
+<body style="font-family: Arial, sans-serif; background: #0c0c0c; color: white; text-align: center; padding: 2rem;">
+<h1>404 - Page Not Found</h1>
+<p>The page you're looking for doesn't exist.</p>
+<a href="/" style="color: #4A90E2;">Go Home</a>
+</body>
+</html>
+          `);
+        }
+      });
+    } else {
+      // Fallback HTML if 404.html doesn't exist
+      res.status(404).send(`
+<!DOCTYPE html>
+<html>
+<head><title>404 - Page Not Found</title></head>
+<body style="font-family: Arial, sans-serif; background: #0c0c0c; color: white; text-align: center; padding: 2rem;">
+<h1>404 - Page Not Found</h1>
+<p>The page you're looking for doesn't exist.</p>
+<a href="/" style="color: #4A90E2;">Go Home</a>
+</body>
+</html>
+      `);
+    }
   } else {
     // For API requests, return JSON
     res.status(404).json({ error: 'Not found' });
@@ -2299,6 +2337,15 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+
+// Check if 404.html exists on startup
+const notFoundPath = path.join(__dirname, 'public', '404.html');
+if (fs.existsSync(notFoundPath)) {
+  console.log('✅ 404.html page found and ready');
+} else {
+  console.warn('⚠️  404.html page not found in public directory');
+}
+
 app.listen(PORT, '0.0.0.0', () => {
 
 
