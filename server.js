@@ -206,11 +206,7 @@ app.get('/', (req, res) => {
 
 // Serve static files from public directory (but not index.html for root)
 app.use(express.static(path.join(__dirname, 'public'), {
-  index: false, // Prevent serving index.html automatically
-  dotfiles: 'ignore',
-  etag: false,
-  extensions: ['html', 'css', 'js', 'png', 'jpg', 'gif'],
-  maxAge: '1h'
+  index: false // Prevent serving index.html automatically
 }));
 
 // Serve the create directory page
@@ -2291,113 +2287,18 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
   }
 });
 
-// Load 404.html content once at startup for better performance
-let cached404Content = null;
-
-// Load 404 page content on startup
-function load404Page() {
-  try {
-    const errorPagePath = path.join(__dirname, 'public', '404.html');
-    if (fs.existsSync(errorPagePath)) {
-      cached404Content = fs.readFileSync(errorPagePath, 'utf8');
-      console.log('✅ 404.html content loaded and cached');
-    } else {
-      console.warn('⚠️  404.html file not found, using fallback');
-    }
-  } catch (error) {
-    console.error('Error loading 404.html:', error);
-  }
-}
-
-// Call this during startup
-load404Page();
-
 // Catch-all 404 handler (must be last)
 app.get('*', (req, res) => {
-  // Always return 404 status first
-  res.status(404);
-  
   // Check if request accepts HTML (browser request)
   if (req.accepts('html')) {
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    
-    if (cached404Content) {
-      // Serve cached 404.html content
-      res.send(cached404Content);
-    } else {
-      // Fallback HTML if 404.html couldn't be loaded
-      res.send(`<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 - Page Not Found</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
-            color: #ffffff;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 2rem;
-        }
-        .container { max-width: 600px; width: 100%; }
-        h1 {
-            font-size: 6rem;
-            font-weight: 900;
-            background: linear-gradient(45deg, #4A90E2, #7B68EE);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 1rem;
-        }
-        h2 { font-size: 2rem; margin-bottom: 1rem; opacity: 0.9; }
-        p { font-size: 1.1rem; opacity: 0.7; margin-bottom: 2rem; line-height: 1.6; }
-        .btn {
-            display: inline-block;
-            background: linear-gradient(45deg, #4A90E2, #7B68EE);
-            color: white;
-            text-decoration: none;
-            padding: 12px 30px;
-            border-radius: 50px;
-            font-weight: 600;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
-        }
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(74, 144, 226, 0.4);
-        }
-        @media (max-width: 768px) {
-            h1 { font-size: 4rem; }
-            h2 { font-size: 1.5rem; }
-            p { font-size: 1rem; }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>404</h1>
-        <h2>Page Not Found</h2>
-        <p>The page you're looking for doesn't exist or has been moved.</p>
-        <a href="/" class="btn">🏠 Go Home</a>
-    </div>
-</body>
-</html>`);
-    }
+    res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
   } else {
     // For API requests, return JSON
-    res.setHeader('Content-Type', 'application/json');
-    res.send(JSON.stringify({ error: 'Not found' }));
+    res.status(404).json({ error: 'Not found' });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, '0.0.0.0', () => {
 
 
