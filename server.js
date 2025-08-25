@@ -440,11 +440,13 @@ app.get('/api/leaderboard', async (req, res) => {
         userStats[directory] = {
           username: displayName, // Use display name instead of full path
           hits: 0,
+          totalSummary: 0,
           lastHit: log.timestamp
         };
       }
       
       userStats[directory].hits++;
+      userStats[directory].totalSummary += (log.userData.summary || 0);
       if (new Date(log.timestamp) > new Date(userStats[directory].lastHit)) {
         userStats[directory].lastHit = log.timestamp;
       }
@@ -458,23 +460,26 @@ app.get('/api/leaderboard', async (req, res) => {
           userStats[parentDirectory] = {
             username: parentDirectory,
             hits: 0,
+            totalSummary: 0,
             lastHit: log.timestamp
           };
         }
         
         userStats[parentDirectory].hits++;
+        userStats[parentDirectory].totalSummary += (log.userData.summary || 0);
         if (new Date(log.timestamp) > new Date(userStats[parentDirectory].lastHit)) {
           userStats[parentDirectory].lastHit = log.timestamp;
         }
       }
     });
 
-    // Sort by hits for global leaderboard
+    // Sort by total summary for global leaderboard
     const globalLeaderboard = Object.values(userStats)
-      .sort((a, b) => b.hits - a.hits);
+      .sort((a, b) => b.totalSummary - a.totalSummary);
 
-    // Create live leaderboard (same data but could be filtered by time)
-    const liveLeaderboard = [...globalLeaderboard];
+    // Sort by hits for live leaderboard (keeping it unchanged)
+    const liveLeaderboard = Object.values(userStats)
+      .sort((a, b) => b.hits - a.hits);
 
     res.json({
       global: globalLeaderboard,
