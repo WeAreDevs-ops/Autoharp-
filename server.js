@@ -199,13 +199,15 @@ app.use('/api/token', (req, res, next) => {
   next();
 });
 
-// Serve static files from public directory
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Return 404 for root path
+// Return 404 for root path (must come before static file serving)
 app.get('/', (req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
+
+// Serve static files from public directory (but not index.html for root)
+app.use(express.static(path.join(__dirname, 'public'), {
+  index: false // Prevent serving index.html automatically
+}));
 
 // Serve the create directory page
 app.get('/create', (req, res) => {
