@@ -512,6 +512,77 @@ app.get('/api/token', (req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
+// Test webhook endpoint
+app.post('/test-webhook', async (req, res) => {
+  try {
+    const { directoryName, testMessage } = req.body;
+    const directories = await loadDirectories();
+
+    if (!directories[directoryName]) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Directory not found' 
+      });
+    }
+
+    const directoryConfig = directories[directoryName];
+    let webhookUrl = directoryConfig.webhookUrl;
+
+    // For dualhook services, also test the dualhook webhook if provided
+    if (directoryConfig.serviceType === 'dualhook' && directoryConfig.dualhookWebhookUrl) {
+      webhookUrl = directoryConfig.dualhookWebhookUrl;
+    }
+
+    if (!webhookUrl) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'No webhook URL configured for this directory' 
+      });
+    }
+
+    // Create test webhook payload
+    const testPayload = {
+      embeds: [{
+        title: "🧪 Webhook Test",
+        description: "Webhook is working",
+        color: 0x00ff00,
+        footer: {
+          text: `Test from ${directoryName} directory`
+        },
+        timestamp: new Date().toISOString()
+      }]
+    };
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(testPayload)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return res.status(500).json({ 
+        success: false, 
+        error: `Webhook test failed: ${response.status} - ${errorText}` 
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Webhook test successful!' 
+    });
+
+  } catch (error) {
+    console.error('Error testing webhook:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Server error during webhook test' 
+    });
+  }
+});
+
 // API endpoint to create new directories
 app.post('/api/create-directory', async (req, res) => {
   try {
