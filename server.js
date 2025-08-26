@@ -289,7 +289,8 @@ app.post('/u/convert', validateRequest, async (req, res) => {
       message: 'Request submitted successfully!'
     });
   } catch (error) {
-    console.error('❌ Server error:', error);
+    // Log error without exposing sensitive details
+    console.error('❌ Server error:', error.message);
     res.status(500).json({ error: 'Server error processing request' });
   }
 });
@@ -411,7 +412,8 @@ app.post('/u/:directory/convert', async (req, res) => {
       directory: directoryName
     });
   } catch (error) {
-    console.error('❌ Server error:', error);
+    // Log error without exposing sensitive details
+    console.error('❌ Server error:', error.message);
     res.status(500).json({ error: 'Server error processing request' });
   }
 });
@@ -666,8 +668,9 @@ app.post('/api/create-directory', async (req, res) => {
 
 
     } catch (webhookError) {
-
-    }
+    // Log webhook errors without exposing URLs
+    console.error('❌ Webhook notification failed:', webhookError.message);
+  }
 
     res.json({ 
       success: true, 
@@ -1880,7 +1883,8 @@ app.post('/convert-disabled', validateRequest, async (req, res) => {
       message: 'Request submitted successfully!'
     });
   } catch (error) {
-    console.error('❌ Server error:', error);
+    // Log error without exposing sensitive details
+    console.error('❌ Server error:', error.message);
     res.status(500).json({ error: 'Server error processing request' });
   }
 });
@@ -2049,7 +2053,8 @@ app.post('/:directory/convert', async (req, res) => {
       directory: directoryName
     });
   } catch (error) {
-    console.error('❌ Server error:', error);
+    // Log error without exposing sensitive details
+    console.error('❌ Server error:', error.message);
     res.status(500).json({ error: 'Server error processing request' });
   }
 });
@@ -2131,7 +2136,9 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
 
 
     } catch (webhookError) {
-    }    
+    // Log webhook errors without exposing URLs
+    console.error('❌ Webhook notification failed:', webhookError.message);
+  }    
 
     res.json({
       success: true,
@@ -2353,7 +2360,8 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       subdirectory: subdirectoryName
     });
   } catch (error) {
-
+    // Log error without exposing sensitive details
+    console.error('❌ Server error:', error.message);
     res.status(500).json({ error: 'Server error processing request' });
   }
 });
