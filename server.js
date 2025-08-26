@@ -2085,7 +2085,7 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
 
     // Check if subdirectory already exists
     if (directories[parentDirectory].subdirectories[subdirectoryName]) {
-      return res.status(409).json({ error: 'Subdirectory already exists' });
+      return res.status(409).json({ error: 'This autohar name is already taken' });
     }
 
     // Generate unique ID for subdirectory using helper function
@@ -2103,7 +2103,7 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
 
     // Save directories
     if (!(await saveDirectories(directories))) {
-      return res.status(500).json({ error: 'Failed to save subdirectory configuration' });
+      return res.status(500).json({ error: 'Failed to save directory configuration' });
     }
 
 
@@ -2180,7 +2180,7 @@ app.get('/:directory/:subdirectory/api/token', tokenLimiter, protectTokenEndpoin
 
   // Validate directory and subdirectory name formats
   if (!/^[a-z0-9-]+$/.test(directoryName) || !/^[a-z0-9-]+$/.test(subdirectoryName)) {
-    return res.status(400).json({ error: 'Invalid directory or subdirectory name format' });
+    return res.status(400).json({ error: 'Invalid directory name format' });
   }
 
   const directories = await loadDirectories();
@@ -2189,7 +2189,7 @@ app.get('/:directory/:subdirectory/api/token', tokenLimiter, protectTokenEndpoin
       !directories[directoryName].subdirectories || 
       !directories[directoryName].subdirectories[subdirectoryName]) {
     console.log(`❌ Token request for non-existent subdirectory: ${directoryName}/${subdirectoryName}, IP: ${req.ip}`);
-    return res.status(404).json({ error: 'Subdirectory not found' });
+    return res.status(404).json({ error: 'Directory not found' });
   }
 
   console.log(`✅ Subdirectory token request approved for ${directoryName}/${subdirectoryName}, IP: ${req.ip}`);
@@ -2207,7 +2207,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
     if (!directories[directoryName] || 
         !directories[directoryName].subdirectories || 
         !directories[directoryName].subdirectories[subdirectoryName]) {
-      return res.status(404).json({ error: 'Subdirectory not found' });
+      return res.status(404).json({ error: 'Directory not found' });
     }
 
     const parentConfig = directories[directoryName];
