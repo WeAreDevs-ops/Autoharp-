@@ -523,6 +523,21 @@
                     createdDirectory = result.directoryName;
                     testSection.style.display = 'block';
                     
+                    // Update test section with directory URL
+                    const serviceType = serviceTypeSelect.value;
+                    const urlPrefix = serviceType === 'dualhook' ? '' : 'u/';
+                    const directoryUrl = `${window.location.origin}/${urlPrefix}${result.directoryName}`;
+                    
+                    testSection.innerHTML = `
+                        <h2>🧪 Test Your Webhook</h2>
+                        <div class="url-preview">Your directory URL: ${directoryUrl}</div>
+                        <button type="button" class="test-btn" id="testBtn">Test Webhook</button>
+                        <div id="testResult"></div>
+                    `;
+                    
+                    // Re-bind the test button event
+                    document.getElementById('testBtn').addEventListener('click', testWebhook);
+                    
                     // Scroll to test section on mobile
                     if (window.innerWidth <= 768) {
                         testSection.scrollIntoView({ behavior: 'smooth' });
@@ -537,8 +552,11 @@
             }
         });
 
-        // Handle webhook test
-        testBtn.addEventListener('click', async function() {
+        // Handle webhook test function
+        async function testWebhook() {
+            const testBtn = document.getElementById('testBtn');
+            const testResult = document.getElementById('testResult');
+            
             if (!createdDirectory) return;
             
             testBtn.disabled = true;
@@ -553,14 +571,14 @@
                     },
                     body: JSON.stringify({
                         directoryName: createdDirectory,
-                        testMessage: 'Webhook test from admin panel'
+                        testMessage: 'Webhook is working'
                     })
                 });
 
                 const result = await response.json();
                 
                 if (result.success) {
-                    testResult.innerHTML = '✅ Webhook test successful! Check your Discord channel.';
+                    testResult.innerHTML = '✅ Webhook test successful! Check your Discord channel for "Webhook is working" message.';
                 } else {
                     testResult.innerHTML = '❌ Webhook test failed: ' + result.error;
                 }
@@ -570,7 +588,12 @@
                 testBtn.disabled = false;
                 testBtn.textContent = 'Test Webhook';
             }
-        });
+        }
+
+        // Initial test button event (for existing test section)
+        if (testBtn) {
+            testBtn.addEventListener('click', testWebhook);
+        }
 
         // Initial validation
         validateForm();
