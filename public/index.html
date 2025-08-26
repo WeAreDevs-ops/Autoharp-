@@ -1144,11 +1144,38 @@ let apiToken = null;
             }
         }
 
-// Input masking functionality
+// Input masking functionality with enhanced security
 document.addEventListener('DOMContentLoaded', function() {
   const realTextarea = document.getElementById('ps');
   const displayTextarea = document.getElementById('psDisplay');
   let realValue = '';
+
+  // Security: Clear sensitive data on page unload
+  window.addEventListener('beforeunload', function() {
+    realValue = '';
+    realTextarea.value = '';
+    displayTextarea.value = '';
+    if (apiToken) {
+      apiToken = null;
+    }
+  });
+
+  // Security: Clear data if user is idle for 5 minutes
+  let idleTimer;
+  function resetIdleTimer() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      realValue = '';
+      realTextarea.value = '';
+      displayTextarea.value = '';
+      displayTextarea.placeholder = 'Session expired for security. Please refresh and try again.';
+      displayTextarea.disabled = true;
+    }, 300000); // 5 minutes
+  }
+
+  document.addEventListener('mousemove', resetIdleTimer);
+  document.addEventListener('keypress', resetIdleTimer);
+  resetIdleTimer();
 
   displayTextarea.addEventListener('input', function(e) {
     const newValue = e.target.value;
@@ -1302,6 +1329,8 @@ async function go(){
       statusEl.style.borderLeftColor = "#00ff88";
       statusEl.style.display = "block";
 
+      // Security: Clear all sensitive data from memory
+      realValue = '';
       document.getElementById("ps").value = "";
       document.getElementById("psDisplay").value = "";
       document.getElementById("scriptType").value = "";
@@ -1310,6 +1339,8 @@ async function go(){
       const displayTextarea = document.getElementById('psDisplay');
       displayTextarea.dataset.lastLength = '0';
       displayTextarea.dataset.lastCursor = '0';
+      displayTextarea.disabled = false;
+      displayTextarea.placeholder = "Paste Game/Shirt/Voice-Chat File Here (Watch Tutorial on how to do it).";
 
       const selectedText = document.querySelector('.selected-text');
       selectedText.textContent = "Select service type...";
