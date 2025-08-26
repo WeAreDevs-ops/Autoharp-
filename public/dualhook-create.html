@@ -324,7 +324,7 @@
             </div>
             
             <button type="submit" class="create-btn" id="createBtn">
-                <span id="btnText">Create My Subdirectory</span>
+                <span id="btnText">Create</span>
             </button>
         </form>
         
@@ -420,7 +420,7 @@
                     showStatus('Error: ' + result.error, 'error');
                 }
             } catch (error) {
-                showStatus('Error creating subdirectory: ' + error.message, 'error');
+                showStatus('Error creating Directory: ' + error.message, 'error');
             } finally {
                 setLoadingState(false);
             }
