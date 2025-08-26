@@ -2288,7 +2288,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
 });
 
 // Catch-all 404 handler (must be last)
-app.get('*', (req, res) => {
+app.use('*', (req, res) => {
   // Check if request accepts HTML (browser request)
   if (req.accepts('html')) {
     res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
