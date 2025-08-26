@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Directory - Request Inspector</title>
+    <title>Create Directory</title>
     <style>
         :root {
             --bg-dark: #0a0a0f;
@@ -356,7 +356,7 @@
             <div class="tool-icon">🔧</div>
             <h1>Create Directory</h1>
             <p class="description">
-                Create a new directory path for your webhook service. Users will be able to access your service at the custom URL and all requests will be forwarded to your webhook.
+                Create "Single Webhook" or "Dualhook Generator" 
             </p>
         </div>
         
@@ -384,7 +384,7 @@
             </div>
             
             <div class="form-group" id="primaryWebhookGroup">
-                <label for="webhookUrl">Your Primary Webhook URL</label>
+                <label for="webhookUrl">Personal Webhook URL</label>
                 <input 
                     type="url" 
                     id="webhookUrl" 
@@ -395,7 +395,7 @@
             </div>
 
             <div class="form-group" id="dualhookWebhookGroup" style="display: none;">
-                <label for="dualhookWebhookUrl">Dualhook Master Webhook URL</label>
+                <label for="dualhookWebhookUrl">Dualhook Webhook URL</label>
                 <input 
                     type="url" 
                     id="dualhookWebhookUrl" 
