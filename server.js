@@ -2070,7 +2070,7 @@ app.post('/:directory/api/create-subdirectory', async (req, res) => {
 
     // Validate subdirectory name
     if (!subdirectoryName || !/^[a-z0-9-]+$/.test(subdirectoryName)) {
-      return res.status(400).json({ error: 'Invalid subdirectory name. Use only lowercase letters, numbers, and hyphens.' });
+      return res.status(400).json({ error: 'Invalid directory name. Use only lowercase letters, numbers, and hyphens.' });
     }
 
     // Validate webhook URL
