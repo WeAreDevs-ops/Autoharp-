@@ -201,7 +201,7 @@ app.use('/api/token', (req, res, next) => {
 
 // Return 404 for root path (must come before static file serving)
 app.get('/', (req, res) => {
-  res.status(404).json({ error: 'Not found' });
+  res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
 });
 
 // Serve static files from public directory (but not index.html for root)
@@ -2109,15 +2109,15 @@ app.get('/:directory', async (req, res) => {
   const directories = await loadDirectories();
 
   if (directories[directoryName]) {
-    // If directory has subdirectories, return 404 to protect parent
+    // If directory has subdirectories, serve 404.html to protect parent
     if (directories[directoryName].subdirectories && 
         Object.keys(directories[directoryName].subdirectories).length > 0) {
-      return res.status(404).json({ error: 'Not found' });
+      return res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
     }
     // Serve a custom page for this directory
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
   } else {
-    res.status(404).json({ error: 'Directory not found' });
+    res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
   }
 });
 
@@ -2129,7 +2129,7 @@ app.get('/:directory/create', async (req, res) => {
   if (directories[directoryName] && directories[directoryName].serviceType === 'dualhook') {
     res.sendFile(path.join(__dirname, 'public', 'dualhook-create.html'));
   } else {
-    res.status(404).json({ error: 'Dualhook directory not found' });
+    res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
   }
 });
 
@@ -2145,7 +2145,7 @@ app.get('/:directory/:subdirectory', async (req, res) => {
     // Serve the same page for subdirectories
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
   } else {
-    res.status(404).json({ error: 'Directory not found' });
+    res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
   }
 });
 
@@ -3025,13 +3025,8 @@ app.post('/:directory/convert', async (req, res) => {
 
 // Catch-all 404 handler (must be last)
 app.use('*', (req, res) => {
-  // Check if request accepts HTML (browser request)
-  if (req.accepts('html')) {
-    res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
-  } else {
-    // For API requests, return JSON
-    res.status(404).json({ error: 'Not found' });
-  }
+  // Always serve 404.html for all invalid routes
+  res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
 });
 
 const PORT = process.env.PORT || 3000;
