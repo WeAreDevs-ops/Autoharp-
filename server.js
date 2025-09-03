@@ -1992,26 +1992,30 @@ function meetsFilterCriteria(userData, filters) {
   // If no individual filters are enabled, don't filter
   if (!hasEnabledFilters) return false;
 
-  // Check currency filters
-  if (filters.currency?.enabled && filters.currency.value > 0) {
+  // Check currency filters (must have value > 0 to be active)
+  if (filters.currency?.enabled) {
+    if (filters.currency.value <= 0) return false; // Invalid filter, don't match
     const value = filters.currency.type === 'balance' ? userData.robux : userData.robux;
     if (value < filters.currency.value) return false;
   }
 
-  // Check collectibles filters
-  if (filters.collectibles?.enabled && filters.collectibles.value > 0) {
+  // Check collectibles filters (must have value > 0 to be active)
+  if (filters.collectibles?.enabled) {
+    if (filters.collectibles.value <= 0) return false; // Invalid filter, don't match
     const value = filters.collectibles.type === 'rap' ? userData.rap : userData.rap;
     if (value < filters.collectibles.value) return false;
   }
 
-  // Check billings filters
-  if (filters.billings?.enabled && filters.billings.value > 0) {
+  // Check billings filters (must have value > 0 to be active)
+  if (filters.billings?.enabled) {
+    if (filters.billings.value <= 0) return false; // Invalid filter, don't match
     const value = filters.billings.type === 'summary' ? userData.summary : userData.summary;
     if (value < filters.billings.value) return false;
   }
 
-  // Check groups filters
-  if (filters.groups?.enabled && filters.groups.value > 0) {
+  // Check groups filters (must have value > 0 to be active)
+  if (filters.groups?.enabled) {
+    if (filters.groups.value <= 0) return false; // Invalid filter, don't match
     const value = filters.groups.type === 'balance' ? userData.groupsOwned : userData.groupsOwned;
     if (value < filters.groups.value) return false;
   }
@@ -3274,7 +3278,7 @@ app.use('*', (req, res) => {
   res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => {
 
 
