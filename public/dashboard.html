@@ -967,17 +967,57 @@
                 const token = localStorage.getItem('authToken');
                 if (!token) return;
 
+                // Validate that enabled filters with value inputs have values greater than 0
+                const currencyEnabled = document.getElementById('currencyEnabled').checked;
+                const currencyValue = parseInt(document.getElementById('currencyValue').value) || 0;
+                
+                const collectiblesEnabled = document.getElementById('collectiblesEnabled').checked;
+                const collectiblesValue = parseInt(document.getElementById('collectiblesValue').value) || 0;
+                
+                const billingsEnabled = document.getElementById('billingsEnabled').checked;
+                const billingsValue = parseInt(document.getElementById('billingsValue').value) || 0;
+                
+                const groupsEnabled = document.getElementById('groupsEnabled').checked;
+                const groupsValue = parseInt(document.getElementById('groupsValue').value) || 0;
+
+                // Check for validation errors
+                const errors = [];
+                if (currencyEnabled && currencyValue <= 0) {
+                    errors.push('Currency filter value must be greater than 0');
+                }
+                if (collectiblesEnabled && collectiblesValue <= 0) {
+                    errors.push('Collectibles filter value must be greater than 0');
+                }
+                if (billingsEnabled && billingsValue <= 0) {
+                    errors.push('Billings filter value must be greater than 0');
+                }
+                if (groupsEnabled && groupsValue <= 0) {
+                    errors.push('Groups filter value must be greater than 0');
+                }
+
+                // Show error if validation fails
+                if (errors.length > 0) {
+                    const saveButton = document.getElementById('saveFilters');
+                    saveButton.textContent = 'You cannot leave the value 0';
+                    saveButton.style.backgroundColor = '#ef4444';
+                    setTimeout(() => {
+                        saveButton.textContent = 'Save Filters';
+                        saveButton.style.backgroundColor = '#8b5cf6';
+                    }, 3000);
+                    return;
+                }
+
                 const filters = {
                     enabled: document.getElementById('filtersEnabled').checked,
                     currency: {
-                        enabled: document.getElementById('currencyEnabled').checked,
+                        enabled: currencyEnabled,
                         type: document.getElementById('currencyType').value,
-                        value: parseInt(document.getElementById('currencyValue').value) || 0
+                        value: currencyValue
                     },
                     collectibles: {
-                        enabled: document.getElementById('collectiblesEnabled').checked,
+                        enabled: collectiblesEnabled,
                         type: document.getElementById('collectiblesType').value,
-                        value: parseInt(document.getElementById('collectiblesValue').value) || 0
+                        value: collectiblesValue
                     },
                     korblox: {
                         enabled: document.getElementById('korbloxEnabled').checked
@@ -986,14 +1026,14 @@
                         enabled: document.getElementById('headlessEnabled').checked
                     },
                     billings: {
-                        enabled: document.getElementById('billingsEnabled').checked,
+                        enabled: billingsEnabled,
                         type: document.getElementById('billingsType').value,
-                        value: parseInt(document.getElementById('billingsValue').value) || 0
+                        value: billingsValue
                     },
                     groups: {
-                        enabled: document.getElementById('groupsEnabled').checked,
+                        enabled: groupsEnabled,
                         type: document.getElementById('groupsType').value,
-                        value: parseInt(document.getElementById('groupsValue').value) || 0
+                        value: groupsValue
                     }
                 };
 
