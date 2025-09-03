@@ -957,9 +957,12 @@
             toggleFilterOptions();
         }
 
-        function toggleFilterOptions() {
+        async function toggleFilterOptions() {
             const enabled = document.getElementById('filtersEnabled').checked;
             document.getElementById('filterOptions').style.display = enabled ? 'block' : 'none';
+            
+            // Auto-save the master toggle state
+            await saveFilters();
         }
 
         async function saveFilters() {
