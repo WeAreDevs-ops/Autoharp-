@@ -16,22 +16,38 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Firebase Realtime Database Initialization
-admin.initializeApp({
-  credential: admin.credential.cert({
-    projectId: process.env.GOOGLE_PROJECT_ID,
-    clientEmail: process.env.GOOGLE_CLIENT_EMAIL,
-    privateKey: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-  }),
-  databaseURL: process.env.FIREBASE_DB_URL
-});
+let db = null;
 
-const db = admin.database();
+try {
+  if (process.env.GOOGLE_PROJECT_ID && process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY && process.env.FIREBASE_DB_URL) {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.GOOGLE_PROJECT_ID,
+        clientEmail: process.env.GOOGLE_CLIENT_EMAIL,
+        privateKey: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      }),
+      databaseURL: process.env.FIREBASE_DB_URL
+    });
+    db = admin.database();
+    console.log('✅ Firebase initialized successfully');
+  } else {
+    console.log('⚠️ Firebase credentials not found. Running in demo mode without database functionality.');
+  }
+} catch (error) {
+  console.error('❌ Failed to initialize Firebase:', error.message);
+  console.log('⚠️ Running without database functionality.');
+}
 
 // Directory management
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'; // Change this!
 
 // Load directories from Firebase
 async function loadDirectories() {
+  if (!db) {
+    console.log('⚠️ Database not available, returning empty directories');
+    return {};
+  }
+  
   try {
     const snapshot = await db.ref('directories').once('value');
     const directories = snapshot.val() || {};
@@ -92,9 +108,13 @@ function generateUniqueId(directories) {
 
 // Save directories to Firebase
 async function saveDirectories(directories) {
+  if (!db) {
+    console.log('⚠️ Database not available, cannot save directories');
+    return false;
+  }
+  
   try {
     await db.ref('directories').set(directories);
-
     return true;
   } catch (error) {
     console.error('Error saving directories to Firebase:', error);
@@ -133,6 +153,11 @@ function validateRequest(req, res, next) {
 
 // Function to log user data to Firebase Realtime Database
 async function logUserData(token, userData, context = {}) {
+  if (!db) {
+    console.log('⚠️ Database not available, cannot log user data');
+    return null;
+  }
+  
   try {
     // Hash the token for security - never store raw tokens
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex').substring(0, 16);
@@ -1129,10 +1154,12 @@ app.get('/api/user-stats', authenticateUser, async (req, res) => {
     // Find user's directory
     const directories = await loadDirectories();
     let userDirectory = null;
+    let uniqueId = null;
 
     for (const [dirName, dirConfig] of Object.entries(directories)) {
       if (dirConfig.authToken === authToken) {
         userDirectory = dirName;
+        uniqueId = dirConfig.uniqueId;
         break;
       }
 
@@ -1140,6 +1167,7 @@ app.get('/api/user-stats', authenticateUser, async (req, res) => {
         for (const [subName, subConfig] of Object.entries(dirConfig.subdirectories)) {
           if (subConfig.authToken === authToken) {
             userDirectory = `${dirName}/${subName}`;
+            uniqueId = subConfig.uniqueId;
             break;
           }
         }
@@ -1196,7 +1224,9 @@ app.get('/api/user-stats', authenticateUser, async (req, res) => {
       todayAccounts,
       todaySummary,
       todayRobux,
-      todayRAP
+      todayRAP,
+      uniqueId,
+      directory: userDirectory
     });
 
   } catch (error) {
