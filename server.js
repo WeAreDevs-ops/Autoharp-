@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import fs from 'fs';
 import rateLimit from 'express-rate-limit';
+import compression from 'compression';
 
 // Import Firebase Admin SDK
 import admin from 'firebase-admin';
@@ -197,6 +198,7 @@ const tokenLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+app.use(compression()); // Enable gzip compression
 app.use(limiter);
 app.use(bodyParser.json());
 app.use(bodyParser.text({ type: '*/*' }));
@@ -229,9 +231,16 @@ app.get('/', (req, res) => {
   res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
 });
 
-// Serve static files from public directory (but not index.html for root)
+// Serve static files from public directory with appropriate caching
 app.use(express.static(path.join(__dirname, 'public'), {
-  index: false // Prevent serving index.html automatically
+  index: false, // Prevent serving index.html automatically
+  maxAge: '1h', // Cache static assets for 1 hour
+  setHeaders: (res, filePath) => {
+    // Don't cache HTML files to ensure users get updates
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  }
 }));
 
 // Serve the create directory page
