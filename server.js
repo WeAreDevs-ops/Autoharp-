@@ -226,9 +226,9 @@ app.use('/api/token', (req, res, next) => {
   next();
 });
 
-// Return 404 for root path (must come before static file serving)
+// Serve main page at root path for search engines and visitors
 app.get('/', (req, res) => {
-  res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Serve static files from public directory with appropriate caching
